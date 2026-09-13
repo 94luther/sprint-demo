@@ -1,0 +1,42 @@
+/* Sprint OS: data-allowed, the role contract. Brick 96.
+
+   One file, linked by every page, so a block can say who it is for
+   wherever it sits:
+
+       <section data-allowed="manager admin">...</section>
+
+   Before this, brick 81 wrote role rules inside the front door's own
+   <style> and nowhere else. The eleven department pages never even
+   loaded apps/shared/sprint-roles.js, so data-role was never stamped on
+   them and a block inside the Cockpit had no way to know who was holding
+   the phone. Every page loads the roles file now, blocking, in <head>,
+   so the attribute is on <html> before the first frame paints and
+   nothing is ever drawn and then taken away.
+
+   PRESENTATION ONLY, the same sentence that opens sprint-roles.js.
+   Nothing here checks a password. The only real gate is the hub,
+   hub/services/auth.js, requireRoleGroups, proved in
+   hub/tests/driver-role.test.js. Someone who edits this attribute in a
+   browser gets the block back and then gets the hub's 403, which is
+   exactly the point: this saves a person a dead end, it does not keep a
+   secret.
+
+   The six names below are copied from hub/services/auth.js ROLE_GROUPS
+   and nothing else. A name here the hub never issues would quietly stop
+   meaning anything the day the hub's roles change.
+
+   Written as one rule per role rather than a single blanket rule,
+   because that is what makes it FAIL OPEN. 'unknown', a phone that has
+   never signed in or one that is offline and has never cached an answer,
+   has no rule here at all and is shown everything unchanged. Hiding a
+   real job from a real member of staff because their phone has not
+   answered yet costs a delivery. Showing one extra tile costs the same
+   403 the hub already returns.
+
+   Measured both directions in a real browser in docs/proof/role_contract.txt. */
+html[data-role="admin"] [data-allowed]:not([data-allowed~="admin"]){display:none!important}
+html[data-role="staff"] [data-allowed]:not([data-allowed~="staff"]){display:none!important}
+html[data-role="ops"] [data-allowed]:not([data-allowed~="ops"]){display:none!important}
+html[data-role="accounts"] [data-allowed]:not([data-allowed~="accounts"]){display:none!important}
+html[data-role="manager"] [data-allowed]:not([data-allowed~="manager"]){display:none!important}
+html[data-role="driver"] [data-allowed]:not([data-allowed~="driver"]){display:none!important}

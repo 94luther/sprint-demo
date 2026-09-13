@@ -1,0 +1,315 @@
+/* Sprint OS theme: smoky glass on deep green and orange. docs/DESIGN-LANGUAGE.md.
+   Sales, 13 Sep 2026: "a smoky glass look... I want the background to change...
+   like this one, but with a deep rich green and orange." So: a rich backdrop
+   that glows through, dark translucent panels with blur, light text, Sprint's
+   green and orange as the only accents. Every department page loads this AFTER
+   its own styles, and the ten colour names those pages already use are given
+   these values. No page logic changes. Brick 51. */
+
+:root{
+  --ink:transparent;               /* the old dark page colour: the backdrop shows through now */
+  --panel:rgba(8,28,20,.40);      /* smoky glass */
+  --line:rgba(255,255,255,.24);
+  --bone:#F4F7F5;                  /* light text on glass */
+  --dim:#A7B5AE;
+  --green:#3AAA35;
+  --orange:#F7941D;
+  --red:#FF6B61;
+  --font-display:"Segoe UI", Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-body:"Segoe UI", Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --sp-glass:rgba(8,28,20,.40);
+  --sp-glass-2:rgba(255,255,255,.07);
+  --sp-edge:rgba(255,255,255,.26);
+  --sp-shadow:0 22px 54px -24px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12);
+  --sp-r:22px;
+}
+
+/* the backdrop: deep green into deep amber, with two soft glows that make it feel lit */
+html{background:#0B3D2E}
+body{
+  color:#F4F7F5;-webkit-font-smoothing:antialiased;min-height:100vh;
+  background:radial-gradient(520px 440px at 16% 10%, rgba(140,235,150,.42), transparent 62%),radial-gradient(420px 420px at 84% 26%, rgba(255,255,255,.26), transparent 60%),radial-gradient(760px 640px at 90% 94%, rgba(247,148,29,.85), transparent 58%),radial-gradient(400px 400px at 26% 80%, rgba(255,176,70,.30), transparent 60%),radial-gradient(300px 300px at 60% 52%, rgba(255,255,255,.08), transparent 60%),linear-gradient(155deg,#0B3D2E 0%,#176B45 36%,#2A9257 56%,#8A5A1E 82%,#B8671A 100%);background-attachment:fixed;
+}
+
+/* type: a clean sans, no shouting */
+h1,h2,h3,.disp{text-transform:none;letter-spacing:-.2px;font-weight:800;font-family:var(--font-body);color:#F4F7F5}
+h1{font-size:22px} h2{font-size:16px}
+
+/* the header: a band of stronger green glass */
+header{
+  background:linear-gradient(135deg,rgba(20,70,45,.62),rgba(42,140,60,.46));
+  backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+  color:#fff;border-radius:0 0 26px 26px;box-shadow:var(--sp-shadow);position:relative;overflow:hidden;
+  border-bottom:1px solid var(--sp-edge);
+}
+header::before{content:"";position:absolute;left:-20%;top:-60%;width:140%;height:110%;border-radius:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0));transform:rotate(-8deg);pointer-events:none}
+header *{position:relative}
+header a{color:#fff}
+
+/* smoky glass cards */
+.panel,.card,.question-card,.login-wrap,.drawer,.item-row,.bar-row,.cash-row{
+  background:var(--sp-glass);border:1px solid var(--sp-edge);border-radius:var(--sp-r);box-shadow:var(--sp-shadow);
+  backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+}
+.item-row,.bar-row,.cash-row{border-radius:16px}
+.panel .panel,.card .card{box-shadow:none;background:var(--sp-glass-2)}
+.section-head{margin-bottom:10px}
+.section-head span,.section-head small,.section-head a{color:#FDBE74;font-weight:700}
+
+/* buttons: white pill for the main act, green primary, glass ghost, orange only as the one accent */
+/* 44 px is the floor for anything a finger has to hit, and .btn is the most tapped thing
+   in the building, including Copy all on the MD's Do this now card. Padding alone left it
+   at 33. hub/tests/touch-targets.test.js measures this and will not let it shrink again. */
+.btn{background:#fff;color:#0E2F22;border:0;border-radius:999px;font-weight:800;text-transform:none;letter-spacing:0;
+  min-height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary,.btn[data-primary]{background:#3AAA35;color:#fff;border-color:#3AAA35}
+.btn.ghost{background:rgba(255,255,255,.08);color:#F4F7F5;border:1px solid var(--sp-edge)}
+.btn.danger{background:#D6453D;color:#fff}
+.btn.orange,.btn.accent{background:#F7941D;color:#fff;box-shadow:0 10px 24px -10px rgba(247,148,29,.8)}
+
+/* pills and badges */
+.sync-badge{background:rgba(255,255,255,.08);border:1px solid var(--sp-edge);color:#D9E3DE;border-radius:999px;font-weight:800}
+.sync-badge.offline{color:#FDBE74;border-color:rgba(247,148,29,.5);background:rgba(247,148,29,.16)}
+.sync-badge.live,.sync-badge.online{color:#fff;border-color:#3AAA35;background:#3AAA35}
+.banner-example{background:rgba(247,148,29,.16);border:1px solid rgba(247,148,29,.45);color:#FDBE74;border-radius:14px;font-weight:700}
+.banner-stale{background:rgba(247,148,29,.16);border:1px solid rgba(247,148,29,.45);color:#FDBE74;border-radius:14px}
+.verdict{border-radius:999px;font-weight:800}
+.hint,.empty-note,.field-label{color:var(--dim)}
+.err{color:#FFB3AD;background:rgba(214,69,61,.18);border-radius:12px;padding:8px 10px}
+
+/* bars: quantities drawn as space */
+.bar{background:rgba(255,255,255,.12);border-radius:7px;height:13px}
+.bar-fill{background:#3AAA35;border-radius:7px}
+.bar-fill.warn{background:#F7941D}
+.bar-fill.bad{background:#FF6B61}
+
+/* fields */
+input,select,textarea{background:rgba(255,255,255,.08);color:#F4F7F5;border:1px solid var(--sp-edge);border-radius:12px;font-family:var(--font-body)}
+input::placeholder,textarea::placeholder{color:#9DAAA4}
+input:focus,select:focus,textarea:focus{outline:2px solid #3AAA35;outline-offset:1px;border-color:#3AAA35}
+select option{background:#12402E;color:#F4F7F5}
+
+/* the login card, on the office copy */
+.login-wrap{padding:18px}
+.login-hint{color:var(--dim)}
+
+/* drawers */
+.drawer-bg{background:rgba(5,15,10,.55)}
+.drawer{border-radius:22px 22px 0 0}
+.drawer-close{background:rgba(255,255,255,.1);color:#F4F7F5;border-radius:999px;border:1px solid var(--sp-edge)}
+
+/* anything that painted itself with the old dark page colour as an accent square */
+[style*="background:var(--ink)"]{background:rgba(58,170,53,.22) !important}
+
+
+/* ---------- Brick 71: what the iPhone showed, 13 Sep 2026 ----------
+   Sales: "the padding inside cards is broken on ios ... 27 days left needs
+   height padding ... make logo height of nav bar and mask the left of logo
+   with curve ... floating nav bar with sticky and blur ... feather mask for
+   the bottom of content so it fades out." */
+
+/* safe areas: below the notch, above the home indicator */
+html{-webkit-text-size-adjust:100%}
+body{padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))}
+
+/* the bar floats: sticky, blurred, the page scrolls under it */
+header{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:12px;
+  min-height:64px;
+  padding:env(safe-area-inset-top, 0px) 14px 0 0;
+  box-sizing:border-box;
+}
+header::before{top:-40%}
+/* the logo: full height of the bar, flush left, its corner cut by the bar's own curve */
+header img{
+  align-self:stretch;height:auto;width:auto;max-height:none;
+  min-height:60px;max-width:96px;object-fit:cover;object-position:left center;
+  margin:0 4px 0 0;flex:none;border-radius:0;
+}
+header > *:not(img){align-self:center}
+header h1{margin:0}
+
+/* cards: explicit padding, so no page and no browser is left to guess */
+.panel,.card,.question-card{padding:14px 16px;box-sizing:border-box}
+.item-row{padding:9px 0;min-height:40px;align-items:center}
+.bar-row{padding:2px 0}
+.bar-top,.veh-top{align-items:center;min-height:22px;line-height:1.3}
+.bar-top .val,.veh-top span:last-child{white-space:nowrap;padding-left:8px}
+.veh-card{padding:12px 0}
+.veh-sub{line-height:1.4;margin-top:4px}
+
+/* pills and verdicts: real padding, a line height, never wrapping */
+.verdict,.pill,.sync-badge,.tag{
+  padding:5px 11px;line-height:1.2;white-space:nowrap;display:inline-flex;align-items:center;
+  border-radius:999px;font-weight:800;box-sizing:border-box;min-height:24px;
+}
+.verdict{font-size:10.5px;letter-spacing:.03em}
+.sync-badge{min-height:30px;padding:5px 12px}
+
+/* the bottom feathers out under the floating bar */
+body::after{
+  content:"";position:fixed;left:0;right:0;bottom:0;height:110px;pointer-events:none;z-index:30;
+  backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.65) 55%,#000 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.65) 55%,#000 100%);
+  background:linear-gradient(to bottom,rgba(11,61,46,0),rgba(11,61,46,.55));
+}
+/* the home page carries its own floating bar above the feather */
+.bar{z-index:45}
+.bar .in{margin-bottom:0}
+
+/* Brick 72: the logo is a wide wordmark (2416 x 719). Full bar height minus a
+   little air, in proportion, flush left, and the bar's own curve clips it. */
+header img{
+  align-self:stretch;height:auto;width:auto;max-height:none;max-width:none;
+  min-height:0;object-fit:contain;object-position:left center;
+  margin:0 10px 0 0;padding:7px 0 7px 12px;flex:none;box-sizing:border-box;
+}
+header h1{font-size:15px;line-height:1.15;min-width:0}
+@media (max-width:420px){ header img{max-width:44vw} header h1{font-size:14px} }
+
+/* ---------- Brick 74: the wordmark owns the bar, the title sits under it ----------
+   Sales, 13 Sep 2026: "do the same on the department pages, title under the bar."
+   One flex break does it for all eleven pages at once. The wordmark takes the
+   first row at full height, flush left so the bar's own curve clips its corner;
+   the title, the signed in name, the bell and the sync badge fall to the second
+   row. No page markup changes. */
+header{flex-wrap:wrap;min-height:0;padding:env(safe-area-inset-top, 0px) 14px 0 0;row-gap:0}
+header img{order:1;height:72px;width:auto;max-width:none;max-height:none;padding:0;margin:0;align-self:flex-start}
+/* the break: an invisible full width item between the wordmark and the rest */
+header::after{content:"";flex-basis:100%;width:100%;height:0;order:2}
+header > *:not(img){order:3}
+/* the second row: the title leads, the badge closes, with air above and below */
+header .titles,header > h1{padding-left:14px;flex:1;min-width:0;margin:8px 0 10px}
+header > h1{font-size:16px}
+header .titles h1{font-size:16px;line-height:1.2}
+header .titles .who{font-size:11.5px;line-height:1.3;margin-top:1px}
+header .hdr-bell,header .sync-badge,header #pulseWidget{margin:8px 0 10px;align-self:center}
+@media (max-width:420px){
+  /* the wordmark stays full height on every screen; only the type shrinks */
+  header .titles h1,header > h1{font-size:15px}
+  header .sync-badge{font-size:10.5px;padding:5px 10px}
+}
+
+/* Form fields are touch targets too. The guard (hub/tests/touch-targets.test.js) found the
+   customer picker on accounts at 39 px and the campaign picker on marketing at 37. One rule
+   here lifts every select and single line input on every department page to the 44 px floor. */
+select, input[type=text], input[type=number], input[type=search], input[type=date], input[type=tel], input[type=email]{min-height:44px}
+
+/* ---------- Brick 77: the wordmark sits IN the glass, and the backdrop follows the day ----------
+   Sales, 13 Sep 2026, with a screenshot: "It looks very awkward. I wanted it to merge
+   seamlessly into the back." The file on the phone had the white baked in; the disk file is
+   transparent. The band's tail now feathers into the bar and the bar's own curve clips the
+   corner, so there is nothing to see but the mark on the glass. Morning is the default; the
+   other four parts of the day are named on <html> by sprint-chrome.js from the phone's clock. */
+header img{-webkit-mask-image:linear-gradient(to right,#000 78%,transparent 100%);mask-image:linear-gradient(to right,#000 78%,transparent 100%)}
+html[data-daypart="dawn"] body{background-image:radial-gradient(520px 440px at 16% 10%, rgba(140,235,150,.36), transparent 62%),radial-gradient(460px 420px at 82% 12%, rgba(255,178,130,.34), transparent 60%),radial-gradient(760px 640px at 90% 94%, rgba(247,148,29,.72), transparent 58%),radial-gradient(400px 400px at 26% 80%, rgba(255,176,70,.26), transparent 60%),linear-gradient(155deg,#0F3A2C 0%,#1C6444 34%,#2F8C5A 54%,#A06034 80%,#E0854A 100%)}
+html[data-daypart="afternoon"] body{background-image:radial-gradient(520px 440px at 16% 10%, rgba(140,235,150,.40), transparent 62%),radial-gradient(460px 440px at 84% 22%, rgba(255,255,255,.32), transparent 60%),radial-gradient(760px 640px at 90% 94%, rgba(247,148,29,.92), transparent 58%),radial-gradient(400px 400px at 26% 80%, rgba(255,176,70,.34), transparent 60%),linear-gradient(155deg,#0B3B2C 0%,#186D46 36%,#2E9A5B 56%,#A3601C 80%,#DA7C1A 100%)}
+html[data-daypart="evening"] body{background-image:radial-gradient(520px 440px at 16% 10%, rgba(140,235,150,.28), transparent 62%),radial-gradient(460px 440px at 82% 20%, rgba(255,140,60,.30), transparent 60%),radial-gradient(760px 640px at 88% 92%, rgba(240,120,30,.95), transparent 58%),radial-gradient(400px 400px at 26% 80%, rgba(255,150,60,.34), transparent 60%),linear-gradient(155deg,#072C1F 0%,#0F5236 34%,#1C7748 54%,#8B4418 78%,#C9581A 100%)}
+html[data-daypart="night"] body{background-image:radial-gradient(520px 440px at 16% 10%, rgba(140,235,150,.22), transparent 62%),radial-gradient(420px 420px at 84% 26%, rgba(255,255,255,.10), transparent 60%),radial-gradient(760px 640px at 90% 94%, rgba(247,148,29,.50), transparent 58%),radial-gradient(400px 400px at 26% 80%, rgba(255,176,70,.18), transparent 60%),linear-gradient(155deg,#05201A 0%,#0A3427 36%,#114D36 56%,#3E2B14 82%,#5A3712 100%)}
+html[data-daypart="evening"] body::after{background:linear-gradient(to bottom,rgba(7,44,31,0),rgba(7,44,31,.6))}
+html[data-daypart="night"] body::after{background:linear-gradient(to bottom,rgba(4,22,16,0),rgba(4,22,16,.7))}
+html[data-daypart="night"] header{background:linear-gradient(135deg,rgba(12,44,30,.68),rgba(20,80,40,.50))}
+
+/* ---------- Brick 82: glare mode, for a driver standing in the sun ----------
+   Sales's pillar 4a, 13 Sep 2026: kill the glass, raise contrast, make the
+   words heavier, keep it one tap away, and remember it per phone. Nothing
+   below removes the smoky glass look above for anyone who has not asked
+   for this; every rule here is scoped under html[data-glare="on"], or
+   under the phone's own prefers-contrast setting, and wins only because it
+   is more specific and comes later in this same file, never because of
+   !important.
+
+   PROOF NOTE, docs/proof/roles_and_glare.txt: this file is loaded by every
+   department page (ops, care, cockpit, fleet, incidents, driver, insights,
+   accounts, sales, tenders, marketing all carry the link tag), so the
+   attribute contract below is real on every one of them the instant
+   html[data-glare="on"] is present, measured directly on a temporary copy
+   of one of those pages. What is NOT proven: nothing on any of those pages
+   sets that attribute today, because every one of them, and
+   apps/shared/sprint-chrome.js which they all already load, was out of
+   scope for this brick. apps/index.html, the one page this brick was
+   allowed to touch, both sets it (a one tap control, remembered per phone
+   in localStorage under sprintos_glare_v1) and carries the matching rules
+   in its own stylesheet, since it does not load this file. The next brick
+   that touches sprint-chrome.js only needs a few lines reading that same
+   key; no new CSS, the rules already work.
+
+   The prefers-contrast rule needs no wiring at all: a phone whose own
+   accessibility setting already asks for more contrast gets this the
+   moment it opens any department page, with nothing to remember and
+   nothing to tap. */
+:root{
+  --glare-bg:#0A2417;      /* solid, no glass. Measured contrast against white text is in docs/proof/roles_and_glare.txt */
+  --glare-panel:#123723;   /* a shade lighter, still solid and still well past 7 to 1 against white text */
+  --glare-panel-2:#16422B; /* the rare panel nested inside a panel */
+  --glare-line:rgba(255,255,255,.6);
+  --glare-text:#FFFFFF;
+  --glare-dim:#EAF3EE;     /* secondary text, still solidly clear of 7 to 1 on the solid panel */
+  --glare-orange:#FFA733;  /* brighter and more saturated, so the one accent colour still reads in full sun */
+}
+
+html[data-glare="on"]{background:var(--glare-bg)}
+html[data-glare="on"] body{
+  background:var(--glare-bg);background-attachment:scroll;color:var(--glare-text);
+}
+html[data-glare="on"] body::after{display:none}                 /* the feather is a blur; glare mode has none */
+html[data-glare="on"] h1,html[data-glare="on"] h2,html[data-glare="on"] h3,html[data-glare="on"] .disp{
+  color:var(--glare-text);font-weight:900;
+}
+html[data-glare="on"] header{
+  background:var(--glare-panel);backdrop-filter:none;-webkit-backdrop-filter:none;
+  border-bottom:1px solid var(--glare-line);
+}
+html[data-glare="on"] header::before{display:none}
+html[data-glare="on"] .panel,html[data-glare="on"] .card,html[data-glare="on"] .question-card,
+html[data-glare="on"] .login-wrap,html[data-glare="on"] .drawer,html[data-glare="on"] .item-row,
+html[data-glare="on"] .bar-row,html[data-glare="on"] .cash-row{
+  background:var(--glare-panel);border:1px solid var(--glare-line);
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+html[data-glare="on"] .panel .panel,html[data-glare="on"] .card .card{background:var(--glare-panel-2)}
+html[data-glare="on"] .section-head span,html[data-glare="on"] .section-head small,html[data-glare="on"] .section-head a{
+  color:var(--glare-orange);font-weight:800;
+}
+html[data-glare="on"] .btn{font-weight:900}
+html[data-glare="on"] .btn.ghost{background:var(--glare-panel-2);color:var(--glare-text);border:1px solid var(--glare-line)}
+html[data-glare="on"] .btn.orange,html[data-glare="on"] .btn.accent{background:var(--glare-orange);color:#0A2417}
+html[data-glare="on"] .sync-badge{background:var(--glare-panel-2);border:1px solid var(--glare-line);color:var(--glare-text);font-weight:900}
+html[data-glare="on"] .sync-badge.offline{color:#0A2417;background:var(--glare-orange);border-color:var(--glare-orange)}
+html[data-glare="on"] .sync-badge.live,html[data-glare="on"] .sync-badge.online{background:#2FD124;color:#04140C;border-color:#2FD124}
+html[data-glare="on"] .banner-example,html[data-glare="on"] .banner-stale{
+  background:var(--glare-panel-2);border:1px solid var(--glare-orange);color:var(--glare-orange);font-weight:700;
+}
+html[data-glare="on"] .hint,html[data-glare="on"] .empty-note,html[data-glare="on"] .field-label{color:var(--glare-dim);font-weight:600}
+html[data-glare="on"] .err{background:#3A0E0B;color:#FFD9D4;border:1px solid #FF6B61}
+html[data-glare="on"] .bar{background:var(--glare-panel-2);border:1px solid var(--glare-line)}
+html[data-glare="on"] .bar-fill.warn{background:var(--glare-orange)}
+html[data-glare="on"] input,html[data-glare="on"] select,html[data-glare="on"] textarea{
+  background:var(--glare-panel-2);color:var(--glare-text);border:1px solid var(--glare-line);
+}
+html[data-glare="on"] input::placeholder,html[data-glare="on"] textarea::placeholder{color:var(--glare-dim)}
+html[data-glare="on"] select option{background:var(--glare-panel);color:var(--glare-text)}
+html[data-glare="on"] .drawer-bg{background:rgba(2,8,5,.86)}
+html[data-glare="on"] .drawer-close{background:var(--glare-panel-2);color:var(--glare-text);border:1px solid var(--glare-line)}
+
+@media (prefers-contrast: more){
+  html:not([data-glare="off"]){background:var(--glare-bg)}
+  html:not([data-glare="off"]) body{background:var(--glare-bg);background-attachment:scroll;color:var(--glare-text)}
+  html:not([data-glare="off"]) body::after{display:none}
+  html:not([data-glare="off"]) h1,html:not([data-glare="off"]) h2,html:not([data-glare="off"]) h3,html:not([data-glare="off"]) .disp{
+    color:var(--glare-text);font-weight:900;
+  }
+  html:not([data-glare="off"]) header{background:var(--glare-panel);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--glare-line)}
+  html:not([data-glare="off"]) header::before{display:none}
+  html:not([data-glare="off"]) .panel,html:not([data-glare="off"]) .card,html:not([data-glare="off"]) .question-card,
+  html:not([data-glare="off"]) .login-wrap,html:not([data-glare="off"]) .drawer,html:not([data-glare="off"]) .item-row,
+  html:not([data-glare="off"]) .bar-row,html:not([data-glare="off"]) .cash-row{
+    background:var(--glare-panel);border:1px solid var(--glare-line);backdrop-filter:none;-webkit-backdrop-filter:none;
+  }
+  html:not([data-glare="off"]) input,html:not([data-glare="off"]) select,html:not([data-glare="off"]) textarea{
+    background:var(--glare-panel-2);color:var(--glare-text);border:1px solid var(--glare-line);
+  }
+}

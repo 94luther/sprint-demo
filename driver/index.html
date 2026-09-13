@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../shared/sprint-roles.js"></script>
+<link rel="stylesheet" href="../shared/sprint-allowed.css">
+<title>Driver | Sprint Couriers</title>
+<meta name="theme-color" content="#131311">
+<link rel="icon" href="../shared/app-icon-192.png">
+<link rel="apple-touch-icon" href="../shared/app-icon-180.png">
+<style>
+/* Local first brand type. It never phones home to Google, and it never
+   breaks when there is no internet or no signal on a driver phone. Drop
+   the two real font files into apps/shared/fonts/ to restore the exact
+   brand type offline; see the README there. With no files present this
+   falls back to the system font stack below. */
+@font-face{font-family:'Anton'; font-weight:400; font-display:swap;
+  src:local('Anton'), url('../shared/fonts/Anton-Regular.woff2') format('woff2'), url('../shared/fonts/Anton-Regular.ttf') format('truetype');}
+@font-face{font-family:'Inter'; font-weight:100 900; font-display:swap;
+  src:local('Inter'), url('../shared/fonts/Inter-Variable.woff2') format('woff2'), url('../shared/fonts/Inter-Variable.ttf') format('truetype');}
+:root{
+  --font-display:'Anton', Impact, 'Arial Narrow', sans-serif;
+  --font-body:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --ink:#131311; --panel:#1d1d19; --line:#2c2c27; --bone:#F4F4F1; --dim:#a6a69f;
+  --green:#3AAA35; --orange:#F7941D; --red:#e0483e;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%; max-width:100%; overflow-x:hidden;}
+body{
+  background:var(--ink); color:var(--bone); font-family:var(--font-body);
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+  min-height:100vh; padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+h1,h2,h3,.disp{font-family:var(--font-display); text-transform:uppercase; letter-spacing:0.01em; font-weight:400;}
+a{color:inherit;}
+button{font-family:inherit;}
+::selection{background:var(--red); color:var(--bone);}
+
+header{
+  position:sticky; top:0; z-index:20; background:var(--ink);
+  border-bottom:1px solid var(--line); padding:10px 14px;
+  display:flex; align-items:center; gap:10px;
+}
+header img{width:32px; height:32px; object-fit:contain; flex:none;}
+header .titles{flex:1; min-width:0;}
+header h1{font-size:15px; line-height:1.1;}
+header .who{font-size:11px; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+/* the one orange element on this screen: whether today's work has fully
+   reached the office yet */
+.sync-badge{
+  font-size:10px; padding:4px 8px; border-radius:20px; border:1px solid var(--line);
+  color:var(--dim); flex:none; display:flex; align-items:center; gap:5px; white-space:nowrap;
+}
+.sync-dot{width:6px; height:6px; border-radius:50%; background:var(--green); flex:none;}
+.sync-badge.pending{color:var(--orange); border-color:var(--orange);}
+.sync-badge.pending .sync-dot{background:var(--orange);}
+/* Brick 15: a quiet fact, never a warning. Sits under the header only
+   while a trip is open and this phone is actually sampling a position. */
+.position-note{
+  font-size:10.5px; color:var(--dim); padding:4px 14px 0; text-align:right;
+}
+
+main{max-width:640px; margin:0 auto; padding:12px 14px 20px;}
+.banner-note{
+  background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--dim);
+  font-size:11.5px; color:var(--dim); padding:8px 12px; line-height:1.4; border-radius:8px; margin-bottom:12px;
+}
+.banner-note b{color:var(--bone); font-weight:600;}
+
+.section-label{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; margin:16px 4px 8px;}
+.section-label:first-child{margin-top:0;}
+
+.stop{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px;
+}
+.stop.done{opacity:0.55;}
+.stop-top{display:flex; align-items:flex-start; gap:10px;}
+.stop-num{
+  width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--dim); flex:none;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
+}
+.stop.done .stop-num{background:var(--green); color:var(--ink);}
+.stop-body{flex:1; min-width:0;}
+.stop-dest{font-size:15px; font-weight:700;}
+.stop-line{font-size:11.5px; color:var(--dim); margin-top:2px;}
+.tag{
+  display:inline-block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em;
+  padding:2px 7px; border-radius:20px; border:1px solid var(--line); color:var(--dim); margin-top:6px;
+}
+.tag.cold{border-color:var(--bone); color:var(--bone);}
+.tag.exception{border-color:var(--red); color:var(--red);}
+.tag.queued{border-color:var(--orange); color:var(--orange);}
+.stop-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+.stop.found{outline:2px solid var(--orange);outline-offset:3px}
+.btn{
+  border:1px solid var(--line); background:var(--ink); color:var(--bone); border-radius:8px;
+  padding:9px 12px; font-size:12.5px; font-weight:700; cursor:pointer; flex:1; min-width:100px;
+}
+.btn:active{border-color:var(--bone);}
+.btn.primary{background:var(--green); border-color:var(--green); color:var(--ink);}
+.btn.warn{background:none; border-color:var(--red); color:var(--red);}
+.btn.ghost{background:none; color:var(--dim); flex:none;}
+
+.empty{color:var(--dim); font-size:13px; padding:20px 8px; text-align:center; line-height:1.5;}
+
+/* action sheet, one shared component for POD name, exception reason, and
+   the cold chain temperature reading */
+.sheet-wrap{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:flex-end; z-index:50;}
+.sheet-wrap.show{display:flex;}
+.sheet{
+  background:var(--panel); border-top:1px solid var(--line); border-radius:16px 16px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom)); width:100%; max-width:640px; margin:0 auto;
+}
+.sheet h3{font-size:16px; margin-bottom:4px;}
+.sheet p{font-size:12px; color:var(--dim); margin-bottom:12px;}
+.sheet input, .sheet textarea{
+  width:100%; background:var(--ink); border:1px solid var(--line); border-radius:8px; color:var(--bone);
+  padding:11px 12px; font-size:15px; font-family:inherit; margin-bottom:12px;
+}
+.sheet textarea{min-height:70px; resize:vertical;}
+.sheet .row{display:flex; gap:10px;}
+.sheet .row .btn{margin:0;}
+
+/* queue drawer: what has not reached the office yet */
+.queue-strip{
+  background:rgba(247,148,29,0.1); border:1px solid var(--orange); border-radius:10px;
+  padding:10px 12px; margin-bottom:12px; font-size:12px; color:var(--orange); display:none;
+}
+.queue-strip.show{display:block;}
+.queue-strip b{display:block; font-size:12.5px; margin-bottom:4px;}
+.queue-strip ul{list-style:none; margin-top:4px;}
+.queue-strip li{padding:2px 0; color:var(--bone); opacity:0.85;}
+
+/* report emergency, fixed to the bottom, two taps, never one */
+.emergency-bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(19,19,17,0) 0%, var(--ink) 40%);
+}
+.emergency-btn{
+  width:100%; max-width:640px; margin:0 auto; display:block; border:none; border-radius:12px;
+  background:var(--red); color:#fff; font-family:var(--font-display); text-transform:uppercase;
+  letter-spacing:0.03em; font-size:17px; padding:16px; cursor:pointer;
+}
+.emergency-btn.armed{background:#fff; color:var(--red); box-shadow:0 0 0 3px var(--red);}
+
+/* emergency screen: what happened, real severity, real position. Opens on
+   the second tap instead of firing immediately, so the payload can carry
+   the type the driver actually pressed instead of a hardcoded guess. */
+.emergency-screen{
+  position:fixed; inset:0; background:var(--ink); z-index:55; display:none;
+  overflow-y:auto; padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+}
+.emergency-screen.show{display:block;}
+.emergency-screen-inner{max-width:480px; margin:0 auto;}
+.emergency-screen h3{font-size:20px; margin-bottom:6px;}
+.emergency-screen .sub{font-size:12px; color:var(--dim); margin-bottom:14px; line-height:1.4;}
+.emergency-type-list{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;}
+.emergency-type-btn{
+  border:1px solid var(--line); background:var(--panel); color:var(--bone); border-radius:20px;
+  padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.emergency-type-btn.selected{background:var(--red); border-color:var(--red); color:#fff;}
+.emergency-screen select{
+  width:100%; background:var(--panel); border:1px solid var(--line); border-radius:8px; color:var(--bone);
+  padding:11px 12px; font-size:15px; margin-bottom:10px;
+}
+.emergency-position-note{font-size:11.5px; color:var(--dim); margin-bottom:16px; line-height:1.4;}
+.emergency-screen .row{display:flex; gap:10px; margin-top:6px;}
+.emergency-screen .row .btn{margin:0;}
+
+/* the one line the driver sees after reporting, nothing else on the screen */
+.emergency-done{
+  position:fixed; inset:0; background:var(--ink); z-index:60; display:none;
+  align-items:center; justify-content:center; text-align:center; padding:24px;
+}
+.emergency-done.show{display:flex;}
+.emergency-done p{font-size:20px; line-height:1.4; max-width:320px;}
+.emergency-done button{
+  margin-top:20px; background:none; border:1px solid var(--line); color:var(--dim); border-radius:8px;
+  padding:9px 16px; font-size:12px;
+}
+
+.login-wrap{max-width:340px; margin:60px auto; padding:0 20px; display:none; text-align:center;}
+.login-wrap h1{font-size:22px; margin-bottom:6px;}
+.login-wrap p{font-size:12px; color:var(--dim); margin-bottom:18px;}
+.login-wrap input{
+  width:100%; background:var(--panel); border:1px solid var(--line); border-radius:8px; color:var(--bone);
+  padding:12px; font-size:15px; margin-bottom:10px; text-align:center;
+}
+.login-hint{font-size:11px; color:var(--dim); margin-top:14px; line-height:1.5;}
+.err{color:var(--red); font-size:12px; margin-top:8px; display:none;}
+
+/* the four step progress line, docs/DESIGN-LANGUAGE.md */
+.prog{display:flex;align-items:flex-start;margin:10px 0 4px;padding:0 2px}
+.prog .st{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0}
+.prog .st .dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.28);box-sizing:border-box;z-index:1}
+.prog .st .lab{font-size:9.5px;font-weight:700;color:#A7B5AE;margin-top:5px;white-space:nowrap;letter-spacing:.2px}
+.prog .st::before{content:"";position:absolute;top:5px;left:-50%;width:100%;height:0;border-top:2px dotted rgba(255,255,255,.28)}
+.prog .st:first-child::before{display:none}
+.prog .st.done .dot{background:#F7941D;border-color:#F7941D}
+.prog .st.done .lab{color:#FDBE74}
+.prog .st.done::before{border-top-color:#F7941D;border-top-style:solid}
+.prog .st.now .dot{background:rgba(14,32,24,.9);border-color:#F7941D;box-shadow:0 0 0 3px rgba(247,148,29,.28)}
+.prog .st.now .lab{color:#fff}
+.prog .st.now::before{border-top-color:#F7941D;border-top-style:solid}
+.prog.delivered .st .dot{background:#3AAA35;border-color:#3AAA35}
+.prog.delivered .st .lab{color:#8FE08A}
+.prog.delivered .st::before{border-top-color:#3AAA35;border-top-style:solid}
+.prog.exception .st.now .dot{border-color:#FF6B61;box-shadow:0 0 0 3px rgba(255,107,97,.28)}
+.prog.exception .st.now .lab{color:#FFB3AD}
+.stop.done .stop-num{color:#fff}
+
+/* Brick 63: what do you want to report, on the driver app */
+.emergency-bar .rowbtns{display:flex;gap:10px;max-width:640px;margin:0 auto}
+.emergency-bar .rowbtns .emergency-btn{margin:0;flex:1.35}
+.report-btn{flex:1;border:1px solid rgba(255,255,255,.30);border-radius:12px;background:rgba(255,255,255,.10);color:#F4F7F5;font-family:var(--font-display);text-transform:uppercase;letter-spacing:.03em;font-size:15px;padding:16px 8px;cursor:pointer}
+.report-btn:active{background:rgba(255,255,255,.18)}
+.drep{padding:2px 0 4px}
+.drep-item{display:flex;gap:12px;align-items:flex-start;padding:13px 13px;margin-bottom:9px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);cursor:pointer;text-align:left;width:100%}
+.drep-item:active{background:rgba(255,255,255,.15)}
+.drep-item.accent{background:rgba(214,69,61,.16);border-color:rgba(214,69,61,.55)}
+.drep-item.off{opacity:.55}
+.drep-ic{width:38px;height:38px;border-radius:12px;background:rgba(58,170,53,.22);display:flex;align-items:center;justify-content:center;flex:none}
+.drep-item.accent .drep-ic{background:var(--red)}
+.drep-ic svg{width:19px;height:19px;stroke:#8FE08A;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.drep-item.accent .drep-ic svg{stroke:#fff}
+.drep-b{flex:1;min-width:0}
+.drep-l{font-size:14.5px;font-weight:800;color:#F4F7F5;line-height:1.25}
+.drep-s{font-size:12px;color:#C9D6CF;margin-top:3px;line-height:1.35}
+.drep-foot{font-size:11.4px;color:#A7B5AE;margin-top:10px;line-height:1.45}
+
+.drep-item.near{border-color:rgba(58,170,53,.55);background:rgba(58,170,53,.13)}
+.drep-tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#8FE08A;background:rgba(58,170,53,.22);border:1px solid rgba(58,170,53,.45);border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+
+/* Brick 67: what the driver is told at sign in */
+.closed-notice{margin:0 0 14px;padding:14px 15px;border-radius:16px;background:rgba(247,148,29,.15);border:1px solid rgba(247,148,29,.5)}
+.closed-notice .t{font-size:14.5px;font-weight:800;color:#FDBE74;line-height:1.3}
+.closed-notice .b{font-size:12.6px;color:#E6EEE9;margin-top:6px;line-height:1.42}
+.closed-notice .b b{color:#fff}
+.closed-notice button{margin-top:11px;background:#fff;color:#0E2F22;border:0;border-radius:999px;font-weight:800;font-size:13px;padding:9px 20px;cursor:pointer;width:auto}
+
+/* Brick 68: built for a thumb. The card slides, the action shows underneath. */
+.swipe-wrap{position:relative;overflow:hidden;border-radius:14px;margin-bottom:10px;touch-action:pan-y}
+.swipe-under{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-radius:14px;background:linear-gradient(90deg,#2A9257 0%,#2A9257 50%,#C25A16 50%,#C25A16 100%)}
+.swipe-under .side{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px;color:#fff;opacity:.35;transition:opacity .12s}
+.swipe-under .side.lit{opacity:1}
+.swipe-under svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.swipe-wrap .stop{position:relative;margin-bottom:0;will-change:transform}
+.swipe-wrap.animating .stop{transition:transform .2s cubic-bezier(.32,.72,0,1)}
+.swipe-hint{font-size:11.4px;color:var(--dim);margin:-2px 2px 12px;line-height:1.4}
+.undo-bar{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:16px;background:rgba(14,47,34,.97);border:1px solid rgba(255,255,255,.24);box-shadow:0 18px 44px -18px rgba(0,0,0,.8);transform:translateY(140%);transition:transform .22s cubic-bezier(.32,.72,0,1)}
+.undo-bar.show{transform:translateY(0)}
+.undo-bar .txt{flex:1;min-width:0;font-size:13px;color:#F4F7F5;line-height:1.3}
+.undo-bar .txt b{color:#8FE08A}
+.undo-bar button{background:#fff;color:#0E2F22;border:0;border-radius:999px;font-weight:800;font-size:13px;padding:9px 18px;cursor:pointer;width:auto;flex:none}
+.undo-bar .ring{width:26px;height:26px;flex:none}
+.undo-bar .ring circle{fill:none;stroke-width:3}
+.undo-bar .ring .bg{stroke:rgba(255,255,255,.18)}
+.undo-bar .ring .fg{stroke:#F7941D;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .95s linear}
+</style>
+<link rel="stylesheet" href="../shared/sprint-theme.css">
+</head>
+<body>
+<script src="../shared/sprint-db.js"></script>
+<script src="../shared/sprint-epod.js"></script>
+
+<header>
+  <img src="../shared/logo-mark.png" alt="Sprint Couriers">
+  <div class="titles">
+    <h1>My stops today</h1>
+    <div class="who" id="whoLine">Loading</div>
+  </div>
+  <span id="pulseWidget"></span>
+  <div class="sync-badge" id="syncBadge"><span class="sync-dot"></span><span id="syncText">Checking</span></div>
+</header>
+<div class="position-note" id="positionNote" style="display:none;"></div>
+
+<main>
+  <div class="login-wrap" id="loginWrap">
+    <h1>Driver sign in</h1>
+    <p>Sprint Couriers staff PIN</p>
+    <form id="loginForm">
+      <input type="text" id="staffId" placeholder="Staff ID" autocomplete="username" required>
+      <input type="text" inputmode="numeric" pattern="[0-9]*" id="pin" placeholder="PIN" maxlength="8" autocomplete="current-password" required>
+      <button class="btn primary" type="submit" style="width:100%;">Sign in</button>
+      <div class="err" id="loginErr">Could not sign in. Check the staff ID and PIN.</div>
+    </form>
+    <div class="login-hint">
+      Demo driver: stf_driver, PIN 5678.<br>
+      This app talks to the hub over the local network. A phone away from the
+      office WiFi needs the hub started with LAN mode on (the SPRINT_BIND
+      setting) and the phone joined to that same network.
+    </div>
+  </div>
+
+  <div id="appWrap" style="display:none;">
+    <div class="banner-note" id="tripNote"><b>EXAMPLE data.</b> This trip and these stops come straight from the hub.</div>
+    <div class="banner-note" id="positionFirstUseNotice" style="display:none;"><b>Position sharing.</b> While a trip is open, this vehicle's position is shared with the office every minute, so the fleet screen and the Incident Desk know where it is. It stops the moment the trip is closed.</div>
+    <div class="queue-strip" id="queueStrip">
+      <b>Waiting to reach the office</b>
+      <div>These went in while signal was down. They will send the moment it returns.</div>
+      <ul id="queueList"></ul>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 4px 8px;">
+      <div class="section-label" style="margin:0;">Today's stops</div>
+      <button class="btn ghost" style="flex:none; width:auto; padding:6px 10px; font-size:11px;" onclick="openFuelSheet()">Log fuel</button>
+    </div>
+    <button type="button" class="btn ghost" id="scanBtn" onclick="scanWaybill()" style="min-height:48px;width:100%;margin-bottom:12px">Scan a waybill</button>
+    <div id="stopsList"></div>
+  </div>
+</main>
+
+<div class="sheet-wrap" id="sheetWrap">
+  <div class="sheet">
+    <h3 id="sheetTitle">Title</h3>
+    <p id="sheetHint">Hint</p>
+    <input type="text" id="sheetInputText" style="display:none;">
+    <input type="number" step="0.1" id="sheetInputNumber" inputmode="decimal" style="display:none;" placeholder="Degrees Celsius">
+    <textarea id="sheetInputArea" style="display:none;" placeholder="Reason"></textarea>
+    <!-- Exception scenario picker: a real reason first, freetext kept as an
+         optional note rather than the only thing ops ever sees. -->
+    <select id="sheetInputSelect" style="display:none;"></select>
+    <textarea id="sheetInputNote" style="display:none;" placeholder="Anything else, optional"></textarea>
+    <div class="err" id="sheetErr">Something went wrong. Try again.</div>
+    <div class="row">
+      <button class="btn ghost" id="sheetCancel">Cancel</button>
+      <button class="btn primary" id="sheetConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fuel purchase capture (deliverable 1b): its own sheet, not the shared
+     single field one above, because a fuel slip needs litres, Pula, the
+     odometer and a photo in one go, as few taps as possible, standing at a
+     pump. -->
+<!-- Brick 63: the driver's report sheet. Every choice runs a flow this app
+     already has, so it queues offline like everything else here. -->
+<div class="sheet-wrap" id="reportSheetWrap">
+  <div class="sheet">
+    <h3 id="reportSheetTitle">What do you want to report?</h3>
+    <p class="hint">Pick the one closest to what happened.</p>
+    <div id="reportSheetBody"></div>
+    <div class="sheet-actions"><button class="btn ghost" type="button" onclick="closeReportSheet()">Close</button></div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="fuelSheetWrap">
+  <div class="sheet">
+    <h3>Log fuel</h3>
+    <p id="fuelHint">Litres, Pula and the odometer from the slip. A photo if you have one.</p>
+    <input type="number" step="0.01" min="0" inputmode="decimal" id="fuelLitres" placeholder="Litres">
+    <input type="number" step="0.01" min="0" inputmode="decimal" id="fuelPula" placeholder="Amount, Pula">
+    <input type="number" step="1" min="0" inputmode="numeric" id="fuelOdometer" placeholder="Odometer, kilometres">
+    <input type="text" id="fuelStation" placeholder="Station, optional">
+    <input type="file" accept="image/*" capture="environment" id="fuelPhoto" style="margin-bottom:12px; font-size:12px; color:var(--dim); width:100%;">
+    <div class="err" id="fuelErr">Something went wrong. Try again.</div>
+    <div class="row">
+      <button class="btn ghost" id="fuelCancel">Cancel</button>
+      <button class="btn primary" id="fuelConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="emergency-bar" id="emergencyBar" style="display:none;">
+  <!-- Report emergency keeps its own button and stays ONE tap. Burying a crash
+       behind an extra tap to tidy a layout is the wrong trade. -->
+  <div class="rowbtns">
+    <button class="emergency-btn" id="emergencyBtn">Report emergency</button>
+    <button class="report-btn" type="button" id="reportBtn" onclick="openReportSheet()">Report something</button>
+  </div>
+</div>
+
+<!-- Emergency screen (single worst defect fix): opens on the SECOND tap
+     instead of firing immediately, so the payload can carry the type the
+     driver actually pressed, a severity that type's own floor never lets
+     drop below, and a position read fresh the moment this screen opens. -->
+<div class="emergency-screen" id="emergencyScreen">
+  <div class="emergency-screen-inner">
+    <h3>What is happening</h3>
+    <p class="sub">Pick the closest match. You can raise the severity if it is worse than usual; it can never go lower than the type's own floor.</p>
+    <div class="emergency-type-list" id="emergencyTypeList"></div>
+    <div class="field-label" style="font-size:12px; color:var(--dim); margin-bottom:4px;">Severity</div>
+    <select id="emergencySeverity"></select>
+    <p class="emergency-position-note" id="emergencyPositionNote">Finding your position...</p>
+    <div class="err" id="emergencyErr" style="display:none;"></div>
+    <div class="row">
+      <button class="btn ghost" id="emergencyCancel">Cancel</button>
+      <button class="btn warn" id="emergencySend">Send report</button>
+    </div>
+  </div>
+</div>
+
+<div class="emergency-done" id="emergencyDone">
+  <div>
+    <p id="emergencyDoneLine">Help is coming. The office can see this.</p>
+    <button id="emergencyDoneClose">Back to my stops</button>
+  </div>
+</div>
+
+<!-- The single worst defect: report emergency used to send type: 'other'
+     no matter what actually happened. This is the one file the emergency
+     screen below and the exception picker (delivery-exception brief) both
+     read, and the exact file hub/server.js validates a report against. -->
+<script src="../shared/emergency-types.js"></script>
+<script src="../shared/recognition-widget.js"></script>
+<script>
+'use strict';
+/* Driver app (ROLE-DEMO-SPEC.md): phone shaped, offline first. Every write
+   this screen makes queues in local storage the moment the network is not
+   there, and sends the moment it comes back, in order, so a driver never
+   loses a stop update, and a report emergency tap never gets lost either. */
+
+const STATUS_ORDER = ['booked', 'collected', 'in_transit', 'out_for_delivery', 'delivered', 'exception'];
+const NEXT_STATUS = { booked: 'collected', collected: 'in_transit', in_transit: 'out_for_delivery' };
+const NEXT_LABEL = { booked: 'Mark collected', collected: 'Mark departed', in_transit: 'Mark arrived' };
+const QUEUE_KEY = 'sprintos_driver_queue_v1';
+const CACHE_KEY = 'sprintos_driver_stops_cache_v1';
+
+let ME = null;
+let DRIVER = null;
+let TRIP = null;
+let STOPS = [];
+let ALL_TRIPS = [];
+let EMERGENCY_ARMED = false;
+let EMERGENCY_TIMER = null;
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function uid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'id' + Date.now() + Math.random().toString(16).slice(2);
+}
+
+/* ---------- api ---------- */
+async function apiFetch(url, opts) {
+  const res = await fetch(url, Object.assign({ credentials: 'include', headers: { 'Content-Type': 'application/json' } }, opts));
+  let json;
+  try { json = await res.json(); } catch (e) { json = { ok: false, error: 'Bad response' }; }
+  if (res.status === 401) { const err = new Error('unauthorized'); err.auth = true; throw err; }
+  if (!json.ok) { const err = new Error(json.error || ('HTTP ' + res.status)); err.status = res.status; throw err; }
+  return json.data;
+}
+
+/* ---------- queue: everything that has not reached the office yet ---------- */
+function loadQueue() {
+  if (window.SprintDB) return SprintDB.pendingSync();
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function queueLabel(item) {
+  if (item.kind === 'emergency') return 'Report emergency';
+  if (item.kind === 'temperature') return 'Temperature reading';
+  if (item.kind === 'depart') return 'Depart trip, odometer ' + item.body.odometer_start;
+  if (item.kind === 'close') return 'Close trip, odometer ' + item.body.odometer_end;
+  if (item.kind === 'fuel') return 'Fuel purchase, ' + (item.body.litres_ml / 1000) + ' L';
+  if (item.kind === 'positions') return 'Position update, ' + item.body.length + (item.body.length === 1 ? ' point' : ' points');
+  return 'Stop update: ' + (item.body.status || 'exception');
+}
+function renderQueueStrip() {
+  const q = loadQueue();
+  const strip = document.getElementById('queueStrip');
+  const list = document.getElementById('queueList');
+  if (!q.length) { strip.classList.remove('show'); return; }
+  strip.classList.add('show');
+  list.innerHTML = q.map((item) => '<li>' + esc(queueLabel(item)) + '</li>').join('');
+  updateSyncBadge(q.length);
+}
+function updateSyncBadge(pendingCount) {
+  const badge = document.getElementById('syncBadge');
+  const text = document.getElementById('syncText');
+  const pending = pendingCount === undefined ? loadQueue().length : pendingCount;
+  if (!navigator.onLine) { badge.className = 'sync-badge pending'; text.textContent = 'No signal'; return; }
+  if (pending > 0) { badge.className = 'sync-badge pending'; text.textContent = pending + ' waiting to send'; return; }
+  badge.className = 'sync-badge'; text.textContent = 'All sent';
+}
+
+function clientHeaders(item) {
+  // Brick 79: the hub remembers this id, so a write whose reply was lost on the
+  // way back is answered from memory the second time, never applied twice
+  return { 'Content-Type': 'application/json', 'X-Sprint-Client-Id': item.id };
+}
+async function queueOrSend(item) {
+  if (!item.id) item.id = uid();
+  if (!item.created_at) item.created_at = new Date().toISOString();
+  if (navigator.onLine) {
+    try {
+      await apiFetch(item.url, { method: item.method, headers: clientHeaders(item), body: JSON.stringify(item.body) });
+      return { sent: true };
+    } catch (e) {
+      if (e.auth) throw e;
+      // a real server error (bad request) is not a signal problem, do not
+      // queue it forever, surface it once and stop
+      if (e.status && e.status < 500 && e.status !== 0) throw e;
+    }
+  }
+  if (window.SprintDB) {
+    await SprintDB.queue(item);
+    SprintDB.requestSync();
+  } else {
+    const q = loadQueue();
+    q.push(item);
+    saveQueue(q);
+  }
+  renderQueueStrip();
+  return { sent: false };
+}
+
+async function flushQueue() {
+  if (!navigator.onLine) return;
+  if (!window.SprintDB) return flushQueueLegacy();
+  if (!SprintDB.pendingSync().length) return;
+  const r = await SprintDB.replay((item) =>
+    apiFetch(item.url, { method: item.method, headers: clientHeaders(item), body: JSON.stringify(item.body) }));
+  renderQueueStrip();
+  if (r.rejected.length) showQueueRefusals(r.rejected);
+  if (r.sent.length || r.dropped.length || r.rejected.length) await loadStops();
+}
+function showQueueRefusals(items) {
+  // a write the hub will never accept is dropped, and the driver is told in words
+  const note = document.getElementById('positionNote');
+  if (!note) return;
+  note.style.display = 'block';
+  note.textContent = (items.length === 1 ? 'One update was refused by the office system and has been dropped: ' : items.length + ' updates were refused by the office system and have been dropped: ') +
+    items.map((it) => queueLabel(it) + ' (' + (it.last_error || 'refused') + ')').join('; ') + '. Tell dispatch if that looks wrong.';
+}
+async function flushQueueLegacy() {
+  let q = loadQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      await apiFetch(item.url, { method: item.method, body: JSON.stringify(item.body) });
+    } catch (e) {
+      // a version or state conflict means the change already landed a
+      // different way, so it is done, never stuck; anything else stays
+      // queued and is tried again on the next signal
+      const already = e.status === 409;
+      if (!already) { remaining.push(item); continue; }
+    }
+  }
+  saveQueue(remaining);
+  renderQueueStrip();
+  if (remaining.length < q.length) await loadStops();
+}
+window.addEventListener('online', () => { updateSyncBadge(); flushQueue(); });
+if (window.SprintDB) {
+  SprintDB.migrateLegacy(QUEUE_KEY).then((n) => { if (n) renderQueueStrip(); });
+  SprintDB.onChange(() => renderQueueStrip());
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && (e.data.type === 'replayed' || e.data.type === 'replay-failed')) { renderQueueStrip(); if (e.data.sent) loadStops(); }
+    });
+  }
+}
+window.addEventListener('offline', () => updateSyncBadge());
+setInterval(flushQueue, 20000);
+
+/* ---------- vehicle positions (brick 15): sampled every 60 s while a trip
+   is open, buffered locally, pushed as a batch through the exact same
+   offline queue as everything else above. Never surveillance: this is a
+   fact about the VEHICLE the office and the Incident Desk can see, and it
+   stops the moment the trip closes. ---------- */
+const POSITION_BUFFER_KEY = 'sprintos_driver_position_buffer_v1';
+const POSITION_NOTICE_KEY = 'sprintos_driver_position_notice_shown_v1';
+const POSITION_LAST_SENT_KEY = 'sprintos_driver_position_last_sent_v1';
+let POSITION_TIMER = null;
+
+function loadPositionBuffer() {
+  try { return JSON.parse(localStorage.getItem(POSITION_BUFFER_KEY) || '[]'); } catch (e) { return []; }
+}
+function savePositionBuffer(buf) { localStorage.setItem(POSITION_BUFFER_KEY, JSON.stringify(buf)); }
+
+function showPositionFirstUseNoticeOnce() {
+  if (localStorage.getItem(POSITION_NOTICE_KEY)) return;
+  localStorage.setItem(POSITION_NOTICE_KEY, '1');
+  const el = document.getElementById('positionFirstUseNotice');
+  if (el) el.style.display = 'block';
+}
+function updatePositionNote(atIso) {
+  const note = document.getElementById('positionNote');
+  if (!note) return;
+  if (!atIso) { note.style.display = 'none'; return; }
+  const time = new Date(atIso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  note.textContent = 'Position shared, ' + time;
+  note.style.display = 'block';
+}
+
+// One phone reading, the exact same navigator.geolocation.getCurrentPosition
+// pattern the report emergency screen already uses. A denied permission or
+// a timeout means nothing gets buffered this minute; it is tried again on
+// the next tick, never surfaced as an error to the driver.
+function samplePosition() {
+  if (!('geolocation' in navigator)) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const buf = loadPositionBuffer();
+      buf.push({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy_m: pos.coords.accuracy,
+        speed_mps: pos.coords.speed === null || pos.coords.speed === undefined ? null : pos.coords.speed,
+        recorded_at: new Date().toISOString()
+      });
+      savePositionBuffer(buf);
+      checkEstates(pos);
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+}
+
+// Packages whatever has been buffered into one batch and hands it to the
+// same queueOrSend every other write on this screen already uses, so it
+// queues offline and retries exactly like a stop update or a fuel capture.
+// Called at most once a minute (the tick below) and once more, immediately,
+// when the trip closes.
+async function flushPositionBuffer() {
+  const buf = loadPositionBuffer();
+  if (!buf.length || !TRIP) return;
+  savePositionBuffer([]);
+  const item = { id: uid(), kind: 'positions', url: '/api/trips/' + TRIP.id + '/positions', method: 'POST', body: buf };
+  await queueOrSend(item);
+  const now = new Date().toISOString();
+  localStorage.setItem(POSITION_LAST_SENT_KEY, now);
+  updatePositionNote(now);
+}
+/* Brick 66: the same two rules the hub sweep uses, applied on the phone itself.
+   The hub cannot reach a phone with no signal, and no signal at the end of a
+   long day is exactly when a trip gets left open. The promise on the consent
+   form is about this phone, so this phone enforces it. */
+var GAB_OFFSET_MS = 2 * 60 * 60 * 1000;   // Botswana, UTC+2 all year
+var DAY_ENDS_HOUR = 19;                    // in Gaborone
+var MAX_OPEN_HOURS = 14;
+function tripIsOver(nowMs) {
+  if (!TRIP || !TRIP.departed_at) return null;
+  var departed = Date.parse(TRIP.departed_at);
+  if (isNaN(departed)) return null;
+  if ((nowMs - departed) / 3600000 >= MAX_OPEN_HOURS) {
+    return 'this trip has been open more than ' + MAX_OPEN_HOURS + ' hours';
+  }
+  var g = new Date(departed + GAB_OFFSET_MS);
+  var endOfDay = Date.UTC(g.getUTCFullYear(), g.getUTCMonth(), g.getUTCDate(), DAY_ENDS_HOUR, 0, 0) - GAB_OFFSET_MS;
+  if (nowMs >= endOfDay) return 'the working day is over';
+  return null;
+}
+function stopSharingBecause(reason) {
+  stopPositionTracking();
+  var note = document.getElementById('positionNote');
+  if (note) {
+    note.style.display = 'block';
+    note.textContent = 'Position sharing has stopped because ' + reason + '. Your stops are still here and anything waiting to send will still send. Nothing is being shared from this phone now.';
+  }
+}
+
+/* ---------- Brick 67: what the driver is told at sign in ----------
+   Brick 66 closes a trip the driver forgot to close. If nobody says so, the
+   driver finds yesterday's trip gone and decides the app lost their work, or
+   opens a second trip for the same day. Both are worse than the problem the
+   auto close solved. Acknowledged per trip on this device. */
+var CLOSED_SEEN_KEY = 'sprintos_driver_closed_seen_v1';
+function closedSeen(){
+  try { return JSON.parse(localStorage.getItem(CLOSED_SEEN_KEY) || '[]'); } catch (e) { return []; }
+}
+function markClosedSeen(id){
+  try {
+    var seen = closedSeen();
+    if (seen.indexOf(id) === -1) seen.push(id);
+    localStorage.setItem(CLOSED_SEEN_KEY, JSON.stringify(seen.slice(-20)));
+  } catch (e) {}
+  var el = document.getElementById('closedNotice');
+  if (el) el.remove();
+}
+function showClosedNotice(data){
+  if (!data || !data.trip) return;
+  if (closedSeen().indexOf(data.trip.id) !== -1) return;
+  var t = data.trip;
+  var when = t.closed_at ? new Date(t.closed_at).toLocaleString('en-GB', { timeZone: 'Africa/Gaborone', weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'later that day';
+  var bits = [];
+  bits.push('Your trip from ' + esc(t.date || 'the other day') + (t.route_label ? ', ' + esc(t.route_label) : '') + ' was still open, so the system closed it on <b>' + esc(when) + '</b>.');
+  bits.push('Nothing you did was lost. Every stop you finished is saved and anything waiting to send has been sent.');
+  if (data.odometer_end_missing) bits.push('No closing kilometres were taken, so somebody in the office will ask you what the reading was.');
+  if (data.undelivered) bits.push('<b>' + data.undelivered + (data.undelivered === 1 ? ' parcel</b> on that trip was not delivered' : ' parcels</b> on that trip were not delivered') + ' and none of them were marked delivered by the system.');
+  bits.push('Sharing your position stopped at that moment, the way it is meant to.');
+  var html = '<div class="closed-notice" id="closedNotice"><div class="t">Yesterday\u2019s trip was closed for you</div>' +
+    '<div class="b">' + bits.join('<br>') + '</div>' +
+    '<button type="button" onclick="markClosedSeen(\'' + esc(t.id) + '\')">Got it</button></div>';
+  var main = document.querySelector('main');
+  if (main) main.insertAdjacentHTML('afterbegin', html);
+}
+async function checkClosedForMe(){
+  try {
+    var data = await apiFetch('/api/trips/closed-for-me');
+    showClosedNotice(data);
+  } catch (e) { /* nothing to say is not an error */ }
+}
+
+function positionTick() {
+  if (!TRIP || TRIP.status !== 'departed') return;
+  var over = tripIsOver(Date.now());
+  if (over) { stopSharingBecause(over); return; }
+  samplePosition();
+  // Gives the fix a moment to land before the batch is packaged, so a
+  // reading taken this very tick usually rides in this tick's batch
+  // rather than waiting for the next one.
+  setTimeout(flushPositionBuffer, 2000);
+}
+function startPositionTracking() {
+  if (POSITION_TIMER) return;
+  showPositionFirstUseNoticeOnce();
+  const lastSent = localStorage.getItem(POSITION_LAST_SENT_KEY);
+  if (lastSent) updatePositionNote(lastSent);
+  positionTick();
+  POSITION_TIMER = setInterval(positionTick, 60000);
+}
+function stopPositionTracking() {
+  if (POSITION_TIMER) { clearInterval(POSITION_TIMER); POSITION_TIMER = null; }
+  updatePositionNote(null);
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  try {
+    const me = await apiFetch('/api/me');
+    if (!me) { showLogin(); return; }
+    ME = me;
+    document.getElementById('whoLine').textContent = ME.name + ', ' + ME.role;
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    document.getElementById('emergencyBar').style.display = 'block';
+    SprintPulseWidget.mount('pulseWidget');
+    await loadTrip();
+    checkClosedForMe();
+  } catch (e) {
+    showLogin();
+  }
+}
+async function loadTrip() {
+  try {
+    const drivers = await apiFetch('/api/drivers?staff_id=' + encodeURIComponent(ME.id));
+    DRIVER = drivers[0] || null;
+    if (!DRIVER) {
+      document.getElementById('stopsList').innerHTML = '<div class="empty">No driver profile is linked to this login yet. Ask ops to link one.</div>';
+      return;
+    }
+    const trips = await apiFetch('/api/trips?driver_id=' + encodeURIComponent(DRIVER.id));
+    ALL_TRIPS = trips;
+    TRIP = trips.find((t) => t.status === 'departed') || trips.find((t) => t.status === 'planned') || null;
+    if (!TRIP) {
+      document.getElementById('stopsList').innerHTML = '<div class="empty">No trip is on the road for you today.</div>';
+      return;
+    }
+    await loadStops();
+  } catch (e) {
+    loadFallback();
+  }
+}
+// Brick 15: starts or stops the 60 second position sampler to match the
+// trip's own status, wherever TRIP just changed, on the network path or
+// the offline fallback, right after departing, or right after closing.
+function syncPositionTracking() {
+  if (TRIP && TRIP.status === 'departed') startPositionTracking();
+  else stopPositionTracking();
+}
+async function loadStops() {
+  const shipments = await apiFetch('/api/shipments?trip_id=' + encodeURIComponent(TRIP.id));
+  STOPS = shipments;
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ trip: TRIP, stops: STOPS, at: new Date().toISOString() }));
+  renderStops();
+  renderQueueStrip();
+  updateSyncBadge();
+  syncPositionTracking();
+}
+var EXAMPLE_TRIP = false;
+function loadFallback() {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      // A cache written by a load that came back with nothing must not stand in
+      // the way of the example trip below; an empty cache is not a trip.
+      if (!parsed || !parsed.stops || !parsed.stops.length) throw new Error('empty cache');
+      TRIP = parsed.trip; STOPS = parsed.stops;
+      // A seeded example trip must never be described as stops the hub sent.
+      if (TRIP && String(TRIP.id || '').indexOf('trp_example') === 0) {
+        EXAMPLE_TRIP = true;
+        document.getElementById('tripNote').innerHTML = '<b>EXAMPLE TRIP.</b> Every stop, name and address below is invented to show how the screen works. Nothing here is saved or sent.';
+        renderStops(); renderQueueStrip(); updateSyncBadge(); syncPositionTracking();
+        return;
+      }
+      document.getElementById('tripNote').innerHTML = '<b>Offline.</b> Showing the last stops the hub sent, from ' + new Date(parsed.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '.';
+      renderStops();
+      renderQueueStrip();
+      updateSyncBadge();
+      syncPositionTracking();
+      return;
+    } catch (e) {}
+  }
+  // The example trip, on a phone copy only. The bundle ships
+  // _seed/driver_cache.json so the Driver tile opens on something a person can
+  // read instead of an empty screen. This never runs on the office system: a
+  // real driver with no signal still gets the honest empty state below, because
+  // showing them a pretend trip on a real round would be dangerous.
+  var host = location.hostname || '';
+  var onHub = host === 'localhost' || host === '127.0.0.1' || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+  if (!onHub && window.fetch) {
+    fetch('../_seed/driver_cache.json')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (seed) {
+        if (!seed || !seed.stops || !seed.stops.length) throw new Error('no seed');
+        TRIP = seed.trip; STOPS = seed.stops; EXAMPLE_TRIP = true;
+        document.getElementById('tripNote').innerHTML = '<b>EXAMPLE TRIP.</b> Every stop, name and address below is invented to show how the screen works. Nothing here is saved or sent.';
+        renderStops();
+        renderQueueStrip();
+        updateSyncBadge();
+      })
+      .catch(function () {
+        document.getElementById('stopsList').innerHTML = '<div class="empty">No signal yet, and nothing saved from an earlier visit.</div>';
+        updateSyncBadge();
+      });
+    return;
+  }
+  document.getElementById('stopsList').innerHTML = '<div class="empty">No signal yet, and nothing saved from an earlier visit.</div>';
+  updateSyncBadge();
+}
+function showLogin() {
+  document.getElementById('loginWrap').style.display = 'block';
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('emergencyBar').style.display = 'none';
+  document.getElementById('syncText').textContent = 'Sign in';
+}
+
+/* ---------- stops ---------- */
+function statusWord(s) { return s.replace(/_/g, ' '); }
+// Deliverable 1a: the odometer becomes real, not optional. A planned trip
+// shows the depart gate instead of stops, and a departed trip whose stops
+// are all done (delivered or exception, nothing left to do) shows the
+// close gate underneath them, so a reading is asked for at both ends
+// before the trip can move on, exactly the two moments the brief names.
+function departGateHtml() {
+  return (
+    '<div class="empty" style="text-align:left; padding:16px 4px;">' +
+    '<div style="margin-bottom:10px; color:var(--bone);">This trip has not departed yet. Enter the odometer reading before the first stop.</div>' +
+    '<button class="btn primary" style="width:100%;" onclick="openDepartSheet()">Depart trip</button>' +
+    '</div>'
+  );
+}
+function closeGateHtml() {
+  return (
+    '<div class="empty" style="text-align:left; padding:16px 4px;">' +
+    '<div style="margin-bottom:10px; color:var(--bone);">Every stop on this trip is done. Enter the odometer reading to close it out.</div>' +
+    '<button class="btn primary" style="width:100%;" onclick="openCloseSheet()">Close trip</button>' +
+    '</div>'
+  );
+}
+function attachAllSwipes(){
+  document.querySelectorAll('.swipe-wrap').forEach(function(w){
+    if (w.dataset.wired) return;
+    var s = findStop(w.getAttribute('data-stop'));
+    if (!s || s.status === 'delivered') return;
+    attachSwipe(w, s);
+    w.dataset.wired = '1';
+  });
+}
+function renderStops() {
+  const list = document.getElementById('stopsList');
+  if (!TRIP) { list.innerHTML = '<div class="empty">No trip is on the road for you today.</div>'; return; }
+  if (TRIP.status === 'planned') { list.innerHTML = departGateHtml(); return; }
+  if (!STOPS.length) {
+    list.innerHTML = '<div class="empty">No stops on this trip.</div>' + (TRIP.status === 'departed' ? closeGateHtml() : '');
+    return;
+  }
+  const sorted = STOPS.slice().sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
+  const allDone = STOPS.every((s) => s.status === 'delivered' || s.status === 'exception');
+  list.innerHTML = sorted.map((s, i) => stopCardHtml(s, i + 1)).join('') + (allDone && TRIP.status === 'departed' ? closeGateHtml() : '');
+  attachAllSwipes();
+}
+
+/* the progress line: which of the four steps this parcel has reached */
+function progressHtml(s) {
+  var steps = ['Booked', 'Collected', 'In transit', 'Delivered'];
+  var reached = { booked: 0, collected: 1, in_transit: 2, out_for_delivery: 2, delivered: 3, exception: 2 }[s.status];
+  if (reached === undefined) reached = 0;
+  var cls = s.status === 'delivered' ? 'delivered' : (s.status === 'exception' ? 'exception' : '');
+  return '<div class="prog ' + cls + '">' + steps.map(function (lab, i) {
+    var st = i < reached ? 'done' : (i === reached ? 'now' : '');
+    if (s.status === 'delivered') st = 'done';
+    return '<div class="st ' + st + '"><div class="dot"></div><div class="lab">' + lab + '</div></div>';
+  }).join('') + '</div>';
+}
+
+
+/* ---------- Brick 68: built for a thumb ----------
+   Swipe a stop right to move it on, left to say something is wrong. Deliberately
+   hard to do by accident and always undoable, because the hazard review found
+   there is no way to correct a mistake and a van is a bad place to be precise. */
+var SWIPE_THRESHOLD = 0.32;      // of the card width, before anything counts
+var SWIPE_MIN_PX = 56;           // and never less than this on a small screen
+var UNDO_SECONDS = 6;
+var UNDO_STATE = null;
+
+function buzz(ms){ try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+function swipeUnderHtml(s){
+  var right = NEXT_STATUS[s.status] ? NEXT_LABEL[s.status].replace(/^Mark /, '') : (s.status === 'out_for_delivery' ? 'Deliver' : '');
+  var left = s.status !== 'exception' ? 'Problem' : '';
+  return '<div class="swipe-under">' +
+    '<span class="side left-side"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' + esc(right || '') + '</span>' +
+    '<span class="side right-side">' + esc(left || '') + '<svg viewBox="0 0 24 24"><path d="M12 9v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>' +
+    '</div>';
+}
+
+/* What a swipe right does, given where the stop is now. Delivering is the one
+   that must not happen silently: it opens the sheet so somebody's name is
+   recorded against the parcel. */
+function swipeRightAction(s){
+  if (s.status === 'out_for_delivery') return { kind: 'sheet', run: function(){ deliverStop(s.id); } };
+  if (NEXT_STATUS[s.status]) return { kind: 'advance', label: NEXT_LABEL[s.status].replace(/^Mark /, ''), run: function(){ advanceStop(s.id); } };
+  return null;
+}
+
+function attachSwipe(wrap, s){
+  var card = wrap.querySelector('.stop');
+  var underLeft = wrap.querySelector('.left-side');
+  var underRight = wrap.querySelector('.right-side');
+  var startX = 0, startY = 0, dx = 0, dragging = false, decided = false, busy = false, swallowClick = false;
+
+  var threshold = function(){ return Math.max(SWIPE_MIN_PX, wrap.offsetWidth * SWIPE_THRESHOLD); };
+  var reset = function(){
+    wrap.classList.add('animating');
+    card.style.transform = '';
+    underLeft.classList.remove('lit'); underRight.classList.remove('lit');
+    setTimeout(function(){ wrap.classList.remove('animating'); }, 220);
+  };
+
+  var onStart = function(e){
+    if (busy) return;
+    var t = e.touches ? e.touches[0] : e;
+    startX = t.clientX; startY = t.clientY; dx = 0; dragging = true; decided = false;
+  };
+  var onMove = function(e){
+    if (!dragging || busy) return;
+    var t = e.touches ? e.touches[0] : e;
+    var mx = t.clientX - startX, my = t.clientY - startY;
+    if (!decided) {
+      // A mostly vertical drag is the list being scrolled, never a swipe.
+      if (Math.abs(my) > Math.abs(mx)) { dragging = false; return; }
+      if (Math.abs(mx) < 8) return;
+      decided = true;
+    }
+    if (e.cancelable) e.preventDefault();
+    dx = mx;
+    card.style.transform = 'translateX(' + dx + 'px)';
+    var past = Math.abs(dx) >= threshold();
+    underLeft.classList.toggle('lit', dx > 0 && past);
+    underRight.classList.toggle('lit', dx < 0 && past);
+  };
+  var onEnd = function(e){
+    if (!dragging || busy) { dragging = false; return; }
+    dragging = false;
+    var past = Math.abs(dx) >= threshold();
+    // A touch that travelled is a swipe, and the browser will still synthesise a
+    // click on whatever is under the finger when it lifts. Without this the card
+    // swipes AND presses the button underneath, which ran the action straight
+    // away and skipped the undo entirely: the swipe looked right and quietly
+    // removed the safety net. Swallow the click that follows a real swipe.
+    if (decided) {
+      if (e && e.cancelable) e.preventDefault();
+      swallowClick = true;
+      setTimeout(function(){ swallowClick = false; }, 500);
+    }
+    if (!past) { reset(); return; }
+    if (dx > 0) {
+      var act = swipeRightAction(s);
+      if (!act) { reset(); return; }
+      busy = true; buzz(18);
+      if (act.kind === 'sheet') { reset(); busy = false; act.run(); return; }
+      // Slide it away, act, and offer six seconds to take it back.
+      wrap.classList.add('animating');
+      card.style.transform = 'translateX(110%)';
+      setTimeout(function(){ doWithUndo(s, act); busy = false; }, 180);
+    } else {
+      if (s.status === 'exception') { reset(); return; }
+      buzz(18); reset(); exceptionStop(s.id);
+    }
+  };
+
+  // capture phase, so the click dies before it reaches the button
+  wrap.addEventListener('click', function(e){
+    if (swallowClick) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  wrap.addEventListener('touchstart', onStart, { passive: true });
+  wrap.addEventListener('touchmove', onMove, { passive: false });
+  wrap.addEventListener('touchend', onEnd);
+  wrap.addEventListener('touchcancel', function(){ dragging = false; reset(); });
+  // a mouse works the same way, so this is testable and usable on the office PC
+  wrap.addEventListener('mousedown', function(e){ onStart(e); });
+  window.addEventListener('mousemove', function(e){ if (dragging) onMove(e); });
+  window.addEventListener('mouseup', function(){ if (dragging) onEnd(); });
+}
+
+/* The status moves immediately, because a driver must never wait, and an undo
+   bar stands for six seconds. Undo puts the stop back exactly where it was. */
+function doWithUndo(s, act){
+  var before = { status: s.status, queued: s.queued };
+  markLocal(s.id, { status: NEXT_STATUS[before.status] });
+  renderStops();
+  UNDO_STATE = { id: s.id, before: before, committed: false, act: act };
+  showUndoBar(act.label || 'Moved on', function(){
+    // taken back: nothing was sent
+    markLocal(s.id, { status: before.status, queued: before.queued });
+    renderStops();
+    UNDO_STATE = null;
+    buzz(12);
+  }, function(){
+    // six seconds passed with nobody objecting, so it goes for real
+    if (!UNDO_STATE || UNDO_STATE.committed) return;
+    UNDO_STATE.committed = true;
+    markLocal(s.id, { status: before.status, queued: before.queued });
+    act.run();
+    UNDO_STATE = null;
+  });
+}
+
+function showUndoBar(what, onUndo, onExpire){
+  var old = document.getElementById('undoBar');
+  if (old) old.remove();
+  var bar = document.createElement('div');
+  bar.className = 'undo-bar';
+  bar.id = 'undoBar';
+  var C = 2 * Math.PI * 10;
+  bar.innerHTML =
+    '<svg class="ring" viewBox="0 0 26 26"><circle class="bg" cx="13" cy="13" r="10"></circle>' +
+    '<circle class="fg" cx="13" cy="13" r="10" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="0"></circle></svg>' +
+    '<span class="txt"><b>Marked ' + esc(what) + '.</b> Swiped by mistake?</span>' +
+    '<button type="button" id="undoBtn">Undo</button>';
+  document.body.appendChild(bar);
+  // A timer, not requestAnimationFrame. A hidden or sleeping screen never paints
+  // a frame, so rAF would never fire and the bar would sit in the page invisible
+  // while its six seconds ran out: the action would commit with the driver never
+  // having been offered the undo. A phone screen going dark mid swipe is normal.
+  setTimeout(function(){ bar.classList.add('show'); }, 16);
+  var fg = bar.querySelector('.fg');
+  var started = Date.now();
+  var tick = setInterval(function(){
+    var left = 1 - (Date.now() - started) / (UNDO_SECONDS * 1000);
+    fg.setAttribute('stroke-dashoffset', String(C * (1 - Math.max(0, left))));
+  }, 300);
+  var finish = function(undone){
+    clearInterval(tick);
+    clearTimeout(timer);
+    bar.classList.remove('show');
+    setTimeout(function(){ bar.remove(); }, 240);
+    if (undone) onUndo(); else onExpire();
+  };
+  bar.querySelector('#undoBtn').addEventListener('click', function(){ finish(true); });
+  var timer = setTimeout(function(){ finish(false); }, UNDO_SECONDS * 1000);
+}
+
+function stopCardHtml(s, n) {
+  const done = s.status === 'delivered';
+  const cold = s.service === 'cold_chain';
+  let actions = '';
+  if (!done) {
+    if (NEXT_STATUS[s.status]) {
+      actions += '<button class="btn" onclick="advanceStop(\'' + s.id + '\')">' + esc(NEXT_LABEL[s.status]) + '</button>';
+    }
+    if (s.status === 'out_for_delivery') {
+      actions += '<button class="btn primary" onclick="deliverStop(\'' + s.id + '\')">Deliver</button>';
+    }
+    if (s.status !== 'exception') {
+      actions += '<button class="btn warn" onclick="exceptionStop(\'' + s.id + '\')">Exception</button>';
+    }
+    if (cold) {
+      actions += '<button class="btn ghost" onclick="temperatureStop(\'' + s.id + '\')">Log temperature</button>';
+    }
+    actions += '<button class="btn ghost" onclick="measureStop(\'' + s.id + '\')">Measure</button>';
+    if (s.gate && s.gate.href) {
+      actions += '<a class="btn" style="background:#25D366;color:#0E2F22" href="' + esc(s.gate.href) + '" target="_blank" rel="noopener" onclick="gateSent(\'' + s.id + '\')">Ask for the gate code on WhatsApp</a>' +
+        '<div class="stop-line">Opens WhatsApp with the message written. Nothing is sent until you press send.</div>';
+    }
+  }
+  // Brick 68: the card rides in a wrapper so it can slide, with the action it
+  // would take showing underneath as it moves.
+  return (
+    '<div class="swipe-wrap" data-stop="' + s.id + '">' + (done ? '' : swipeUnderHtml(s)) +
+    '<div class="stop ' + (done ? 'done' : '') + '" id="stop-' + s.id + '">' +
+    '<div class="stop-top">' +
+    '<div class="stop-num">' + (done ? String.fromCharCode(10003) : n) + '</div>' +
+    '<div class="stop-body">' +
+    '<div class="stop-dest">' + esc(s.destination || s.waybill) + '</div>' +
+    '<div class="stop-line">' + esc(s.waybill) + ', ' + esc(s.pieces || 0) + ' piece(s), ' + esc(s.kg || 0) + ' kg, ' + esc(statusWord(s.status)) + '</div>' +
+    progressHtml(s) +
+    (cold ? '<span class="tag cold">Cold chain</span>' : '') +
+    (s.status === 'exception' ? '<span class="tag exception">Exception: ' + esc(s.exception_note || s.exception_code || 'noted') + '</span>' : '') +
+    (s.queued ? '<span class="tag queued">Queued</span>' : '') +
+    '<div class="stop-actions">' + actions + '</div>' +
+    '</div></div></div></div>'
+  );
+}
+function findStop(id) { return STOPS.find((s) => s.id === id); }
+function markLocal(id, patch) {
+  const s = findStop(id);
+  if (s) Object.assign(s, patch);
+  renderStops();
+}
+
+async function advanceStop(id) {
+  const s = findStop(id);
+  if (!s) return;
+  const next = NEXT_STATUS[s.status];
+  if (!next) return;
+  await postStopStatus(s, { status: next });
+}
+/* Brick 87: the tape measure, and the gate code request the system writes. */
+async function measureStop(id) {
+  const s = findStop(id);
+  if (!s || !window.SprintEPOD) return;
+  const d = await SprintEPOD.dims({ title: 'Measure ' + (s.destination || s.waybill) });
+  if (!d) return;
+  const note = document.getElementById('positionNote');
+  try {
+    const r = await apiFetch('/api/shipments/' + s.id + '/dims', { method: 'POST', headers: clientHeaders({ id: uid() }), body: JSON.stringify(d) });
+    if (note) { note.style.display = 'block'; note.textContent = r.mismatch
+      ? 'By volume this parcel is ' + r.volumetricKg + ' kg against ' + r.actualKg + ' kg on the scale. Dispatch has been asked to approve the difference.'
+      : 'By volume this parcel is ' + (r.volumetricKg === null ? 'unknown' : r.volumetricKg + ' kg') + ', so the scale weight stands.'; }
+  } catch (e) {
+    await queueOrSend({ id: uid(), kind: 'dims', url: '/api/shipments/' + s.id + '/dims', method: 'POST', body: d });
+    if (note) { note.style.display = 'block'; note.textContent = 'Measurements saved and waiting for signal.'; }
+  }
+}
+const GATE_CHECKED = {};
+async function checkEstates(pos) {
+  if (!navigator.onLine || !pos || !pos.coords) return;
+  const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  for (const s of STOPS) {
+    if (s.status !== 'out_for_delivery' || s.gate || GATE_CHECKED[s.id]) continue;
+    GATE_CHECKED[s.id] = Date.now();
+    try {
+      const r = await apiFetch('/api/shipments/' + s.id + '/geofence', { method: 'POST', body: JSON.stringify(fix) });
+      if (r && r.near) {
+        s.gate = { href: r.href, text: r.text, estate: r.estate, incident_id: r.incident_id, prepared: r.prepared, why: r.why };
+        renderStops();
+      }
+    } catch (e) { delete GATE_CHECKED[s.id]; }
+  }
+}
+function gateSent(id) {
+  const s = findStop(id);
+  if (!s || !s.gate || !s.gate.incident_id) return;
+  queueOrSend({ id: uid(), kind: 'gate', url: '/api/incidents/' + s.gate.incident_id + '/gate-sent', method: 'POST', body: {} });
+}
+async function deliverStop(id) {
+  const s = findStop(id);
+  if (!s) return;
+  openSheet({
+    title: 'Deliver ' + (s.destination || s.waybill),
+    hint: 'Who signed for it',
+    kind: 'text',
+    placeholder: 'Recipient name',
+    onConfirm: async (value) => {
+      if (!value) return;
+      if (s.service === 'cold_chain') await promptTemperature(s);
+      // Brick 64: where the parcel was actually handed over, from the fix this
+      // phone already has. Sent only when there IS a fix; a delivery with no
+      // signal records no point rather than an invented one, and the customer
+      // simply stays unknown until a delivery that does have one.
+      var fix = drepLastFix();
+      var body = { status: 'delivered', pod_name: value };
+      // Brick 85, level 2: a cash on delivery job needs the receipt photographed
+      // and the amount collected before it can close. Cancel means not closed.
+      if (s.cod_amount_thebe > 0 && window.SprintEPOD) {
+        const cod = await SprintEPOD.receipt({ amountThebe: s.cod_amount_thebe, title: 'Cash on delivery, ' + (s.destination || s.waybill) });
+        if (!cod) return;
+        body.cod_receipt_base64 = cod.photo;
+        body.cod_collected_thebe = cod.collectedThebe;
+      }
+      if (fix && typeof fix.lat === 'number') {
+        // Rounded to three decimals, roughly a hundred metres. That is ample to
+        // put three stops in a town in the right order and deliberately too
+        // coarse to identify a person's front door. A delivery point at a home
+        // address is personal information about the CUSTOMER, who never agreed
+        // to anything, so the precision is cut here at the source and the exact
+        // fix is never sent. docs/WHAT-COULD-GO-WRONG.md, section 1.3.
+        var coarse = function (n) { return Math.round(n * 1000) / 1000; };
+        body.delivered_lat = coarse(fix.lat);
+        body.delivered_lng = coarse(fix.lng);
+        body.delivered_accuracy_m = 100;
+      }
+      await postStopStatus(s, body);
+      // Brick 80: sign on glass. The status is already recorded above, so a
+      // driver who cannot get a signature (a gate, a rush, a refusal to sign)
+      // still has a delivery on the record, and the signature is an addition to
+      // it rather than a gate in front of it. A pad left blank records nothing
+      // rather than an empty picture.
+      if (window.SprintEPOD) {
+        try {
+          const png = await SprintEPOD.sign({ title: 'Signature for ' + (s.destination || s.waybill),
+                                              hint: 'Ask ' + value + ' to sign with a finger.' });
+          if (png) {
+            await queueOrSend({ id: uid(), kind: 'pod', url: '/api/shipments/' + s.id + '/pod', method: 'POST',
+                                body: { pod_name: value, signature_png_base64: png } });
+            renderQueueStrip();
+          }
+        } catch (e) { /* a refused signature must never undo a recorded delivery */ }
+      }
+    }
+  });
+}
+// Delivery-exception brief: a driver's exception used to be freetext only
+// (one blank box, "What happened"), which read back on the ops board as a
+// different guess from every driver for the same handful of situations
+// that happen every week. EXCEPTION_CODES is the same emergency taxonomy
+// apps/shared/emergency-types.js carries, plus the delivery-exception
+// codes apps/ops/index.html already uses (EXC_CODES there) that are not
+// already in it, so the picker covers both a stop gone wrong on the road
+// and a stop gone wrong at the door, in the driver's own words.
+const EXTRA_EXCEPTION_CODES = [
+  { type: 'address_not_found', label: 'Address not found' },
+  { type: 'client_closed', label: 'Client closed' },
+  { type: 'damaged', label: 'Damaged' },
+  { type: 'refused', label: 'Refused' }
+];
+const EXCEPTION_CODES = EMERGENCY_TYPES.concat(EXTRA_EXCEPTION_CODES);
+async function exceptionStop(id) {
+  const s = findStop(id);
+  if (!s) return;
+  // Brick 80: a photograph is required before an exception can be closed. An
+  // exception with no picture is one person's word weeks later, which is
+  // exactly what a claim turns on. The old sheet is the fallback for a browser
+  // with no camera at all.
+  if (window.SprintEPOD) {
+    const out = await SprintEPOD.exception({
+      title: 'What happened at ' + (s.destination || s.waybill) + '?',
+      reasons: EXCEPTION_CODES.map((c) => ({ type: c.type, label: c.label })),
+      pieces: typeof s.pieces === 'number' ? s.pieces : null
+    });
+    if (!out) return;
+    const body = { status: 'exception', exception_code: out.code, exception_note: out.note || null };
+    if (out.photo) body.exception_photo_base64 = out.photo;
+    if (out.accepted !== null && out.accepted !== undefined) {
+      body.exception_pieces_accepted = out.accepted;
+      body.exception_note = (out.note ? out.note + '. ' : '') + out.accepted + ' of ' +
+        (out.pieces === null || out.pieces === undefined ? 'the' : out.pieces) + ' pieces accepted';
+    }
+    await postStopStatus(s, body);
+    return;
+  }
+  openSheet({
+    title: 'Exception at ' + (s.destination || s.waybill),
+    hint: 'Pick the closest match. Add a note only if it helps.',
+    kind: 'exception',
+    options: EXCEPTION_CODES,
+    validateFirst: true,
+    onConfirm: async (value) => {
+      if (!value || !value.code) throw new Error('Pick what happened.');
+      await postStopStatus(s, { status: 'exception', exception_code: value.code, exception_note: value.note || null });
+    }
+  });
+}
+/* Brick 80: scan a waybill off the label instead of reading it out. Finds the
+   stop it belongs to and opens it. Where the browser cannot read a barcode
+   (every iPhone today) the same sheet takes the number typed in. */
+async function scanWaybill() {
+  if (!window.SprintEPOD) return;
+  const code = await SprintEPOD.scan({ hint: 'Point the camera at the barcode on the label.' });
+  if (!code) return;
+  const hit = STOPS.find((x) => String(x.waybill || '').toUpperCase() === code);
+  if (!hit) {
+    const note = document.getElementById('positionNote');
+    if (note) { note.style.display = 'block'; note.textContent = 'Waybill ' + code + ' is not on your run today. Check the number or call dispatch.'; }
+    return;
+  }
+  const card = document.getElementById('stop-' + hit.id);
+  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('found'); setTimeout(() => card.classList.remove('found'), 2000); }
+}
+function temperatureStop(id) {
+  const s = findStop(id);
+  if (!s) return;
+  promptTemperature(s);
+}
+function promptTemperature(s) {
+  return new Promise((resolve) => {
+    openSheet({
+      title: 'Temperature reading',
+      hint: (s.destination || s.waybill) + ', cold chain stop',
+      kind: 'number',
+      onConfirm: async (value) => {
+        if (value === '' || value === null) { resolve(); return; }
+        const item = { id: uid(), kind: 'temperature', url: '/api/shipments/' + s.id + '/temperature', method: 'POST', body: { celsius: Number(value) } };
+        markLocal(s.id, { queued: true });
+        const result = await queueOrSend(item);
+        if (result.sent) markLocal(s.id, { queued: false });
+        resolve();
+      }
+    });
+  });
+}
+async function postStopStatus(s, body) {
+  const item = { id: uid(), kind: 'status', url: '/api/shipments/' + s.id + '/status', method: 'POST', body: body };
+  markLocal(s.id, Object.assign({}, body, { queued: true }));
+  const result = await queueOrSend(item);
+  if (result.sent) {
+    markLocal(s.id, { queued: false });
+    await loadStops();
+  }
+}
+
+/* ---------- depart / close: the odometer becomes real (deliverable 1a) ---------- */
+function openDepartSheet() {
+  openSheet({
+    title: 'Depart trip',
+    hint: 'Odometer reading right now, in kilometres.',
+    kind: 'number',
+    numberPlaceholder: 'Odometer, kilometres',
+    numberStep: '1',
+    validateFirst: true,
+    onConfirm: async (value) => {
+      if (value === '' || value === null) throw new Error('An odometer reading is required to depart a trip.');
+      await departTrip(Number(value));
+    }
+  });
+}
+async function departTrip(value) {
+  const item = { id: uid(), kind: 'depart', url: '/api/trips/' + TRIP.id + '/depart', method: 'POST', body: { odometer_start: value } };
+  // Online, a rejection (below the vehicle's last recorded reading, or an
+  // implausible jump) throws here and is shown by the sheet, never applied.
+  // Offline, it queues and is applied locally now so the driver can start
+  // working stops without waiting for signal; the hub re-checks it for
+  // real the moment the queue flushes, same as every other queued write.
+  await queueOrSend(item);
+  TRIP = Object.assign({}, TRIP, { status: 'departed', odometer_start: value });
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ trip: TRIP, stops: STOPS, at: new Date().toISOString() }));
+  renderStops();
+  renderQueueStrip();
+  syncPositionTracking();
+}
+function openCloseSheet() {
+  openSheet({
+    title: 'Close trip',
+    hint: 'Odometer reading right now, in kilometres.',
+    kind: 'number',
+    numberPlaceholder: 'Odometer, kilometres',
+    numberStep: '1',
+    validateFirst: true,
+    onConfirm: async (value) => {
+      if (value === '' || value === null) throw new Error('An odometer reading is required to close a trip.');
+      await closeTripAction(Number(value));
+    }
+  });
+}
+async function closeTripAction(value) {
+  const item = { id: uid(), kind: 'close', url: '/api/trips/' + TRIP.id + '/close', method: 'POST', body: { odometer_end: value } };
+  await queueOrSend(item);
+  // Brick 15: whatever is still buffered goes now, before tracking stops,
+  // so the last minute or two of the trip is never lost.
+  await flushPositionBuffer();
+  TRIP = Object.assign({}, TRIP, { status: 'closed', odometer_end: value });
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ trip: TRIP, stops: STOPS, at: new Date().toISOString() }));
+  renderStops();
+  renderQueueStrip();
+  syncPositionTracking();
+}
+
+/* ---------- fuel purchase: litres, Pula, odometer, a slip photo (deliverable 1b) --- */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read that photo.'));
+    reader.readAsDataURL(file);
+  });
+}
+function openFuelSheet() {
+  if (!DRIVER) return;
+  // Vehicle context: the trip currently open, or (a driver may fill up
+  // between trips, deliverable 1b) the vehicle on the most recent trip on
+  // record for this driver, so a fill up between trips still has somewhere
+  // to attach without asking the driver to pick a vehicle from a list the
+  // driver role cannot even read (GET /api/vehicles is not in
+  // ROUTE_GROUPS.driver_trips). No trip history at all is the one case
+  // this cannot cover; that gap is named in the brief report.
+  const latestTrip = ALL_TRIPS.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+  const fuelVehicleId = TRIP ? TRIP.vehicle_id : (latestTrip ? latestTrip.vehicle_id : null);
+  document.getElementById('fuelHint').textContent = fuelVehicleId
+    ? (TRIP ? 'For this trip. Litres, Pula and the odometer from the slip.' : 'Between trips. Logged against your last vehicle. Litres, Pula and the odometer from the slip.')
+    : 'No vehicle is on record for you yet; ask ops to link a trip first.';
+  ['fuelLitres', 'fuelPula', 'fuelOdometer', 'fuelStation'].forEach((id) => { document.getElementById(id).value = ''; });
+  document.getElementById('fuelPhoto').value = '';
+  document.getElementById('fuelErr').style.display = 'none';
+  document.getElementById('fuelSheetWrap').dataset.vehicleId = fuelVehicleId || '';
+  document.getElementById('fuelSheetWrap').classList.add('show');
+}
+function closeFuelSheet() { document.getElementById('fuelSheetWrap').classList.remove('show'); }
+document.getElementById('fuelCancel').addEventListener('click', closeFuelSheet);
+document.getElementById('fuelConfirm').addEventListener('click', async () => {
+  const errEl = document.getElementById('fuelErr');
+  errEl.style.display = 'none';
+  const vehicleId = document.getElementById('fuelSheetWrap').dataset.vehicleId || '';
+  const litres = parseFloat(document.getElementById('fuelLitres').value);
+  const pula = parseFloat(document.getElementById('fuelPula').value);
+  const odometerRaw = document.getElementById('fuelOdometer').value.trim();
+  const station = document.getElementById('fuelStation').value.trim();
+  const fileInput = document.getElementById('fuelPhoto');
+  if (!vehicleId) { errEl.textContent = 'No vehicle is on record for you yet; ask ops to link a trip first.'; errEl.style.display = 'block'; return; }
+  if (!(litres > 0)) { errEl.textContent = 'Enter how many litres you bought.'; errEl.style.display = 'block'; return; }
+  if (!(pula > 0)) { errEl.textContent = 'Enter how many Pula it cost.'; errEl.style.display = 'block'; return; }
+  const key = uid();
+  const body = {
+    vehicle_id: vehicleId,
+    trip_id: TRIP ? TRIP.id : null,
+    // litres_ml / amount_thebe: converted here, client side, so the wire
+    // contract and the stored row are always the same whole numbers
+    // (millilitres, thebe), never a Pula/litre float the server would
+    // have to trust and re-round.
+    litres_ml: Math.round(litres * 1000),
+    amount_thebe: Math.round(pula * 100),
+    client_ref: key
+  };
+  if (odometerRaw !== '') body.odometer = Number(odometerRaw);
+  if (station) body.station = station;
+  try {
+    if (fileInput.files && fileInput.files[0]) {
+      body.slip_photo_base64 = await fileToBase64(fileInput.files[0]);
+    }
+  } catch (e) {
+    // A photo that failed to read never blocks the money and litres from
+    // saving; the slip photo is a nice to have backup, not the record.
+  }
+  const item = { id: key, kind: 'fuel', url: '/api/fuel-purchases', method: 'POST', body: body };
+  try {
+    await queueOrSend(item);
+  } catch (e) {
+    errEl.textContent = e.message || 'Could not save this fuel purchase.';
+    errEl.style.display = 'block';
+    return;
+  }
+  closeFuelSheet();
+  renderQueueStrip();
+});
+
+/* ---------- action sheet: one shared component ---------- */
+let SHEET_STATE = null;
+
+/* ---------- Brick 63: what do you want to report ----------
+   Every choice below runs a flow this app already has, so anything reported
+   from the roadside queues offline and syncs the moment there is signal. A
+   driver cannot use the office screens, so nothing here links to one. */
+var DREP_ICONS = {
+  parcel: '<path d="M21 8v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8"/><path d="M2 4h20v4H2zM12 4v16"/>',
+  fuel: '<path d="M3 21h10V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M13 9h3a2 2 0 0 1 2 2v6a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9l-3-3"/><path d="M6 8h4"/>',
+  temp: '<path d="M10 13V5a2 2 0 1 1 4 0v8a4 4 0 1 1-4 0z"/>',
+  crash: '<path d="M3 17h18M5 17V9l2-4h10l2 4v8"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/><path d="M12 2v3"/>'
+};
+function drepLiveStops(){
+  return (typeof STOPS !== 'undefined' && STOPS ? STOPS : []).filter(function(s){ return s.status !== 'delivered'; });
+}
+function drepColdStops(){
+  return drepLiveStops().filter(function(s){ return s.service === 'cold_chain'; });
+}
+function openReportSheet(){
+  var live = drepLiveStops(), cold = drepColdStops();
+  var onTrip = typeof TRIP !== 'undefined' && TRIP;
+  var rows = [
+    { key:'exception', icon:'parcel', label:'A stop cannot be delivered',
+      sub: live.length ? 'Nobody there, refused, wrong address. ' + live.length + (live.length === 1 ? ' stop is still open.' : ' stops are still open.')
+                       : 'Nothing is open on this trip, so there is no stop to report against.',
+      enabled: live.length > 0 },
+    { key:'fuel', icon:'fuel', label:'A fuel slip or an odometer reading',
+      sub:'The litres and the reading at the pump. This is what turns into kilometres per litre.',
+      enabled: !!onTrip },
+    { key:'temp', icon:'temp', label:'A temperature reading',
+      sub: cold.length ? cold.length + (cold.length === 1 ? ' cold chain stop is open.' : ' cold chain stops are open.')
+                       : 'No cold chain stop is open on this trip.',
+      enabled: cold.length > 0 },
+    { key:'emergency', icon:'crash', accent:true, label:'An accident, a breakdown or a theft',
+      sub:'Opens the emergency screen. It takes your position the moment it opens and tells the office first.',
+      enabled: true }
+  ];
+  var html = '<div class="drep">' + rows.map(function(r){
+    return '<button type="button" class="drep-item' + (r.accent ? ' accent' : '') + (r.enabled ? '' : ' off') + '"' +
+      (r.enabled ? ' onclick="drepPick(\'' + r.key + '\')"' : ' disabled') + '>' +
+      '<span class="drep-ic"><svg viewBox="0 0 24 24">' + DREP_ICONS[r.icon] + '</svg></span>' +
+      '<span class="drep-b"><span class="drep-l">' + esc(r.label) + '</span>' +
+      '<span class="drep-s">' + esc(r.sub) + '</span></span></button>';
+  }).join('') +
+  '<div class="drep-foot">Anything not on this list goes to the office by phone. Everything on it is saved on this phone first and sent when there is signal, so it still works with no bars.</div></div>';
+  document.getElementById('reportSheetBody').innerHTML = html;
+  document.getElementById('reportSheetWrap').classList.add('show');
+}
+function closeReportSheet(){ document.getElementById('reportSheetWrap').classList.remove('show'); }
+function drepPick(key){
+  closeReportSheet();
+  if (key === 'emergency') { openEmergencyScreen(); return; }
+  if (key === 'fuel') { openFuelSheet(); return; }
+  var list = key === 'temp' ? drepColdStops() : drepLiveStops();
+  if (!list.length) return;
+  if (list.length === 1) {
+    if (key === 'temp') temperatureStop(list[0].id); else exceptionStop(list[0].id);
+    return;
+  }
+  drepPickStop(key, list);
+}
+
+/* ---------- Brick 64: the nearest stop first ----------
+   A stop only has a point once somebody has delivered to that customer before,
+   because the point is captured at the moment of delivery from the driver's own
+   phone. A stop with no point is never called near or far: it sits after the
+   known ones and says so. */
+function drepLastFix(){
+  try {
+    var buf = JSON.parse(localStorage.getItem(POSITION_BUFFER_KEY) || '[]');
+    if (buf.length) { var p = buf[buf.length - 1]; if (typeof p.lat === 'number') return p; }
+  } catch (e) {}
+  return (typeof LAST_FIX !== 'undefined' && LAST_FIX) ? LAST_FIX : null;
+}
+function drepMetres(a, b, c, d){
+  var R = 6371000, r = Math.PI / 180;
+  var dLat = (c - a) * r, dLng = (d - b) * r;
+  var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function drepDistanceWord(m){
+  if (m < 60) return 'you are here';
+  if (m < 1000) return Math.round(m / 10) * 10 + ' m away';
+  return (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km away';
+}
+/* Returns the list ordered nearest first where a point is known, and a flag
+   saying whether distance could be used at all, so the screen can be honest. */
+function drepByNearest(list){
+  var fix = drepLastFix();
+  var withD = list.map(function(s){
+    var lat = s.delivered_lat, lng = s.delivered_lng;
+    var m = (fix && typeof lat === 'number' && typeof lng === 'number') ? drepMetres(fix.lat, fix.lng, lat, lng) : null;
+    return { stop: s, metres: m };
+  });
+  var known = withD.filter(function(x){ return x.metres !== null; });
+  known.sort(function(a, b){ return a.metres - b.metres; });
+  var unknown = withD.filter(function(x){ return x.metres === null; });
+  return { rows: known.concat(unknown), usedPosition: !!fix && known.length > 0, haveFix: !!fix, knownCount: known.length, total: list.length };
+}
+
+function drepPickStop(key, list){
+  var sorted = drepByNearest(list);
+  var html = '<div class="drep">' + sorted.rows.map(function(x, i){
+    var s = x.stop;
+    var near = x.metres !== null ? drepDistanceWord(x.metres) : 'no position recorded for this customer yet';
+    return '<button type="button" class="drep-item' + (i === 0 && x.metres !== null ? ' near' : '') + '" onclick="drepStopChosen(\'' + key + '\',\'' + s.id + '\')">' +
+      '<span class="drep-ic"><svg viewBox="0 0 24 24">' + DREP_ICONS.parcel + '</svg></span>' +
+      '<span class="drep-b"><span class="drep-l">' + esc(s.destination || s.waybill) + (i === 0 && x.metres !== null ? ' <span class="drep-tag">nearest</span>' : '') + '</span>' +
+      '<span class="drep-s">' + esc(s.waybill || '') + ' &middot; ' + esc(statusWord(s.status)) + ' &middot; ' + esc(near) + '</span></span></button>';
+  }).join('') +
+  '<div class="drep-foot">' + (sorted.usedPosition
+    ? 'Ordered by how far each one is from where this phone is now' + (sorted.knownCount < sorted.total ? ', for the ' + sorted.knownCount + ' of ' + sorted.total + ' that have been delivered to before. The rest have no position yet and are listed after them.' : '.')
+    : sorted.haveFix
+      ? 'None of these customers has been delivered to before, so there is no position to measure against yet. The order below is the run order, not distance.'
+      : 'This phone has no position fix right now, so these are in run order rather than by distance.') +
+  '</div></div>';
+  document.getElementById('reportSheetBody').innerHTML = html;
+  document.getElementById('reportSheetTitle').textContent = 'Which stop?';
+  document.getElementById('reportSheetWrap').classList.add('show');
+}
+function drepStopChosen(key, id){
+  closeReportSheet();
+  document.getElementById('reportSheetTitle').textContent = 'What do you want to report?';
+  if (key === 'temp') temperatureStop(id); else exceptionStop(id);
+}
+
+function openSheet(opts) {
+  SHEET_STATE = opts;
+  document.getElementById('sheetTitle').textContent = opts.title;
+  document.getElementById('sheetHint').textContent = opts.hint || '';
+  document.getElementById('sheetErr').style.display = 'none';
+  const text = document.getElementById('sheetInputText');
+  const area = document.getElementById('sheetInputArea');
+  const num = document.getElementById('sheetInputNumber');
+  const select = document.getElementById('sheetInputSelect');
+  const note = document.getElementById('sheetInputNote');
+  text.style.display = opts.kind === 'text' ? 'block' : 'none';
+  area.style.display = opts.kind === 'area' ? 'block' : 'none';
+  num.style.display = opts.kind === 'number' ? 'block' : 'none';
+  select.style.display = opts.kind === 'exception' ? 'block' : 'none';
+  note.style.display = opts.kind === 'exception' ? 'block' : 'none';
+  text.value = ''; area.value = ''; num.value = ''; note.value = '';
+  if (opts.placeholder) text.placeholder = opts.placeholder;
+  // Odometer prompts (deliverable 1a) reuse this same number field but need
+  // their own placeholder and a whole number step, never the temperature
+  // reading's decimal degrees default below.
+  num.placeholder = opts.numberPlaceholder || 'Degrees Celsius';
+  num.step = opts.numberStep || '0.1';
+  // Exception scenario picker (delivery-exception brief): a real reason
+  // first, a placeholder option forces validateFirst to catch "nothing
+  // picked" the same way a missing odometer reading already does, freetext
+  // stays an optional note underneath, never the primary input.
+  if (opts.kind === 'exception') {
+    select.innerHTML = '<option value="">What happened, pick one</option>' + (opts.options || []).map((o) => '<option value="' + o.type + '">' + esc(o.label) + '</option>').join('');
+    select.value = '';
+  }
+  document.getElementById('sheetWrap').classList.add('show');
+  setTimeout(() => (opts.kind === 'text' ? text : opts.kind === 'area' ? area : opts.kind === 'exception' ? select : num).focus(), 50);
+}
+function closeSheet() {
+  document.getElementById('sheetWrap').classList.remove('show');
+  document.getElementById('sheetErr').style.display = 'none';
+  SHEET_STATE = null;
+}
+document.getElementById('sheetCancel').addEventListener('click', closeSheet);
+document.getElementById('sheetConfirm').addEventListener('click', async () => {
+  if (!SHEET_STATE) return;
+  const state = SHEET_STATE;
+  const kind = state.kind;
+  const value = kind === 'text' ? document.getElementById('sheetInputText').value.trim()
+    : kind === 'area' ? document.getElementById('sheetInputArea').value.trim()
+    : kind === 'exception' ? { code: document.getElementById('sheetInputSelect').value, note: document.getElementById('sheetInputNote').value.trim() }
+    : document.getElementById('sheetInputNumber').value;
+  // Odometer prompts (deliverable 1a) set validateFirst: the hub can reject
+  // a reading (below the vehicle's last known one, or a typo sized jump),
+  // and the driver needs to see why and try again, so the sheet stays open
+  // and shows the rejection instead of closing blind the way a stop update
+  // always has. Every existing use (deliver, exception, temperature) is
+  // unchanged: it still closes immediately and works in the background.
+  if (state.validateFirst) {
+    const errEl = document.getElementById('sheetErr');
+    errEl.style.display = 'none';
+    try {
+      await state.onConfirm(value);
+      closeSheet();
+    } catch (e) {
+      errEl.textContent = e.message || 'Something went wrong. Try again.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+  closeSheet();
+  await state.onConfirm(value);
+});
+
+/* ---------- report emergency: two taps, never one, then a real screen ---------- */
+// The single worst defect: this used to fire on the second tap with a
+// hardcoded type: 'other', severity: 4, no position, so a burst tyre and
+// an overturned truck reached ops looking identically catastrophic. The
+// second tap now opens a screen instead of firing directly: a real type
+// (apps/shared/emergency-types.js, the same file hub/server.js validates
+// against), a severity the driver may raise but the screen itself never
+// lets drop below that type's own floor, and a position read fresh the
+// moment the screen opens, never on page load, never before it is needed.
+const emergencyBtn = document.getElementById('emergencyBtn');
+let EMERGENCY_SELECTED_TYPE = null;
+let EMERGENCY_POSITION = null; // {lat, lng, accuracy_m} or null, never fabricated
+let EMERGENCY_POSITION_SOURCE = 'unknown';
+emergencyBtn.addEventListener('click', () => {
+  if (!EMERGENCY_ARMED) {
+    EMERGENCY_ARMED = true;
+    emergencyBtn.textContent = 'Tap again to confirm';
+    emergencyBtn.classList.add('armed');
+    EMERGENCY_TIMER = setTimeout(disarmEmergency, 4000);
+    return;
+  }
+  clearTimeout(EMERGENCY_TIMER);
+  disarmEmergency();
+  openEmergencyScreen();
+});
+function disarmEmergency() {
+  EMERGENCY_ARMED = false;
+  emergencyBtn.textContent = 'Report emergency';
+  emergencyBtn.classList.remove('armed');
+}
+// Finds the stop that best supports an honest "last known" reference when
+// there is no gps fix: the most recently delivered stop (real proof the
+// driver was physically there), else the stop currently being worked.
+// Never invents a location the driver's own data does not actually show.
+function lastKnownStopLabel() {
+  if (!STOPS || !STOPS.length) return null;
+  const delivered = STOPS.filter((s) => s.status === 'delivered' && s.delivered_at).sort((a, b) => (b.delivered_at || '').localeCompare(a.delivered_at || ''));
+  if (delivered.length) return delivered[0].destination || delivered[0].waybill;
+  const inProgress = STOPS.find((s) => s.status !== 'delivered' && s.status !== 'exception');
+  if (inProgress) return inProgress.destination || inProgress.waybill;
+  return null;
+}
+function typeDefaultSeverity(type) {
+  const found = EMERGENCY_TYPES.find((t) => t.type === type);
+  return found ? found.default_severity : 1;
+}
+function renderEmergencyTypeList() {
+  const list = document.getElementById('emergencyTypeList');
+  list.innerHTML = EMERGENCY_TYPES.map((t) => '<button type="button" class="emergency-type-btn' + (t.type === EMERGENCY_SELECTED_TYPE ? ' selected' : '') + '" data-type="' + t.type + '">' + esc(t.label) + '</button>').join('');
+  Array.prototype.forEach.call(list.querySelectorAll('.emergency-type-btn'), (btn) => {
+    btn.addEventListener('click', () => {
+      EMERGENCY_SELECTED_TYPE = btn.dataset.type;
+      renderEmergencyTypeList();
+      updateEmergencySeverityOptions();
+    });
+  });
+}
+// The picker itself never offers a value below the type's own floor: the
+// driver may raise it, never lower it, so there is nothing to clamp on a
+// well behaved client, though hub/server.js enforces the same floor again
+// on arrival, because a client-only rule is not a rule.
+function updateEmergencySeverityOptions() {
+  const sel = document.getElementById('emergencySeverity');
+  const def = EMERGENCY_SELECTED_TYPE ? typeDefaultSeverity(EMERGENCY_SELECTED_TYPE) : 1;
+  const opts = [];
+  for (let n = def; n <= 5; n++) {
+    opts.push('<option value="' + n + '"' + (n === def ? ' selected' : '') + '>' + n + (n === def ? ' (default for this type)' : '') + '</option>');
+  }
+  sel.innerHTML = opts.join('');
+}
+function openEmergencyScreen() {
+  EMERGENCY_SELECTED_TYPE = null;
+  EMERGENCY_POSITION = null;
+  EMERGENCY_POSITION_SOURCE = 'unknown';
+  renderEmergencyTypeList();
+  document.getElementById('emergencySeverity').innerHTML = '';
+  document.getElementById('emergencyErr').style.display = 'none';
+  document.getElementById('emergencyPositionNote').textContent = 'Finding your position...';
+  document.getElementById('emergencyScreen').classList.add('show');
+  requestEmergencyPosition();
+}
+// Called only when this screen opens, never on page load (the brief's own
+// requirement): a missing fix, a denied permission, or a timeout are all
+// the same honest outcome, position unknown, and none of them ever block
+// the report itself from going.
+function requestEmergencyPosition() {
+  const note = document.getElementById('emergencyPositionNote');
+  if (!('geolocation' in navigator)) {
+    note.textContent = 'Position is not available on this device. The office will see position unknown' + describeFallback();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      EMERGENCY_POSITION = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy_m: pos.coords.accuracy };
+      EMERGENCY_POSITION_SOURCE = 'gps';
+      note.textContent = 'Position found, accuracy about ' + Math.round(pos.coords.accuracy) + ' m.';
+    },
+    () => {
+      EMERGENCY_POSITION = null;
+      EMERGENCY_POSITION_SOURCE = 'unknown';
+      note.textContent = 'No position fix. The office will see position unknown' + describeFallback();
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+}
+function describeFallback() {
+  const stop = lastKnownStopLabel();
+  return stop ? ', last known: ' + stop + '.' : '.';
+}
+document.getElementById('emergencyCancel').addEventListener('click', () => {
+  document.getElementById('emergencyScreen').classList.remove('show');
+});
+document.getElementById('emergencySend').addEventListener('click', async () => {
+  const errEl = document.getElementById('emergencyErr');
+  errEl.style.display = 'none';
+  if (!EMERGENCY_SELECTED_TYPE) {
+    errEl.textContent = 'Pick what is happening.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const severity = Number(document.getElementById('emergencySeverity').value);
+  document.getElementById('emergencyScreen').classList.remove('show');
+  await fireEmergency(EMERGENCY_SELECTED_TYPE, severity);
+});
+async function fireEmergency(type, severity) {
+  document.getElementById('emergencyDone').classList.add('show');
+  const key = uid();
+  const label = (EMERGENCY_TYPES.find((t) => t.type === type) || {}).label || 'Emergency';
+  const stopLabel = lastKnownStopLabel();
+  const item = {
+    id: key,
+    kind: 'emergency',
+    url: '/api/incidents',
+    method: 'POST',
+    body: {
+      type: type,
+      severity: severity,
+      title: 'Driver reported: ' + label,
+      trip_id: TRIP ? TRIP.id : null,
+      idempotency_key: key,
+      // Never fabricated: a real fix or nothing. position_source is only
+      // this call's own best claim; hub/server.js recomputes it from
+      // whether real coordinates actually arrived, never trusting this
+      // field on its own.
+      position_source: EMERGENCY_POSITION ? 'gps' : 'unknown',
+      position_lat: EMERGENCY_POSITION ? EMERGENCY_POSITION.lat : null,
+      position_lng: EMERGENCY_POSITION ? EMERGENCY_POSITION.lng : null,
+      position_accuracy_m: EMERGENCY_POSITION ? EMERGENCY_POSITION.accuracy_m : null,
+      position_reference: EMERGENCY_POSITION ? null : (stopLabel ? 'Last known stop: ' + stopLabel : null)
+    }
+  };
+  await queueOrSend(item);
+}
+document.getElementById('emergencyDoneClose').addEventListener('click', () => {
+  document.getElementById('emergencyDone').classList.remove('show');
+});
+
+/* ---------- login ---------- */
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const staffId = document.getElementById('staffId').value.trim();
+  const pin = document.getElementById('pin').value.trim();
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+  try {
+    await apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ staffId, pin }) });
+    await boot();
+  } catch (err) {
+    errEl.style.display = 'block';
+  }
+});
+
+boot();
+</script>
+<script src="../shared/sprint-chrome.js"></script>
+</body>
+</html>
