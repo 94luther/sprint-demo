@@ -149,6 +149,56 @@ header.stuck{background:color-mix(in srgb,var(--ground) 72%,transparent);
   backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);
   box-shadow:0 10px 24px -18px rgba(12,23,18,.5)}
 @supports not (background:color-mix(in srgb,red 50%,transparent)){ .stuck{background:var(--ground)} }
+/* ---------- the wheel ----------
+   A scroll driven animation: the timeline IS the card's travel across the rail,
+   so the turn is welded to the thumb rather than chasing it on a timer. It also
+   survives conditions that pause clock driven motion, because nothing here is
+   timed. Browsers without the feature simply show flat cards, which is a fine
+   page, so this is an enhancement and never a dependency. */
+@supports (animation-timeline:view()){
+  .picks{perspective:1100px;perspective-origin:50% 50%}
+  .picks .pick{
+    animation:wheel linear both;
+    animation-timeline:view(inline);
+    animation-range:cover 0% cover 100%;
+    transform-style:preserve-3d;
+  }
+  @keyframes wheel{
+    0%{transform:perspective(1100px) translateZ(-48px) rotateY(20deg) scale(.94);opacity:.9}
+    45%,55%{transform:perspective(1100px) translateZ(0) rotateY(0deg) scale(1);opacity:1}
+    100%{transform:perspective(1100px) translateZ(-48px) rotateY(-20deg) scale(.94);opacity:.9}
+  }
+  /* the tiles turn too, but gently: they are small and a hard turn reads as a gimmick */
+  .cats{perspective:800px}
+  .cats .cat{animation:wheel-soft linear both;animation-timeline:view(inline);
+    animation-range:cover 0% cover 100%}
+  @keyframes wheel-soft{
+    0%{transform:scale(.92) rotateY(13deg);opacity:.92}
+    45%,55%{transform:scale(1) rotateY(0deg);opacity:1}
+    100%{transform:scale(.92) rotateY(-13deg);opacity:.92}
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .picks .pick,.cats .cat{animation:none;transform:none;opacity:1}
+}
+
+/* ---------- feathering, everywhere an edge would cut ---------- */
+/* the foot of the hero dissolves into the page instead of ending on a line */
+.deck{-webkit-mask-image:linear-gradient(to bottom,#000 86%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 86%,transparent 100%)}
+/* the blurred bleed fades out in every direction, so it never shows its own box */
+.bleed{-webkit-mask-image:radial-gradient(120% 100% at 50% 0,#000 42%,transparent 100%);
+  mask-image:radial-gradient(120% 100% at 50% 0,#000 42%,transparent 100%)}
+/* the page dissolves under the floating bar rather than sliding behind a hard line */
+.phone::after{content:"";position:fixed;left:0;right:0;bottom:0;height:120px;z-index:20;
+  pointer-events:none;
+  background:linear-gradient(to top,var(--ground) 18%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to top,#000 40%,transparent 100%);
+  mask-image:linear-gradient(to top,#000 40%,transparent 100%)}
+/* a photograph inside a card gets its own soft foot so text never sits on a seam */
+.pick .ph{-webkit-mask-image:linear-gradient(to bottom,#000 92%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 92%,transparent 100%)}
+
 /* ---------- the rolling: the picture drifts, the bar runs out ---------- */
 @keyframes drift{
   from{transform:scale(1.05)}
