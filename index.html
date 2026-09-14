@@ -121,18 +121,83 @@ header{display:flex;align-items:center;gap:10px;padding:22px 0 14px}
 .dots button.on::after{width:26px;background:var(--green-l)}
 .dots button:focus-visible{outline:3px solid var(--green-l);outline-offset:-6px;border-radius:var(--r-pill)}
 @media (prefers-reduced-motion:reduce){.dots button::after{transition:none}}
+/* ---------- feathering, the reason nothing cuts dead at the edge ----------
+   One mask, two uses. A rail is masked on both sides so a card dissolves off
+   the screen instead of being guillotined by it. The value is a variable so a
+   rail that starts flush left can feather only on the right. */
+.rail-feather{
+  --fade:26px;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--fade),
+    #000 calc(100% - var(--fade)),transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 var(--fade),
+    #000 calc(100% - var(--fade)),transparent 100%);
+}
+@supports not (mask-image:linear-gradient(#000,#000)){ .rail-feather{-webkit-mask-image:none;mask-image:none} }
 
-/* ---------- category tiles: chunky, dark, one orange ---------- */
+/* the blurred bleed: the hero photograph again, huge and out of focus, sitting
+   behind the whole page so the colour of the food washes up into the ground */
+.bleed{position:fixed;inset:-20% -20% auto -20%;height:62vh;z-index:-1;pointer-events:none;
+  filter:blur(64px) saturate(150%);opacity:.55;transition:opacity .6s ease}
+.bleed img{width:100%;height:100%;object-fit:cover;transform:scale(1.2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bleed{opacity:.38}}
+:root[data-theme="dark"] .bleed{opacity:.38}
+
+/* the header frosts once the page moves under it */
+header{position:sticky;top:0;z-index:30;margin:0 -18px;padding:18px 18px 12px;
+  transition:background .3s ease,backdrop-filter .3s ease,box-shadow .3s ease}
+header.stuck{background:color-mix(in srgb,var(--ground) 72%,transparent);
+  backdrop-filter:blur(18px) saturate(170%);-webkit-backdrop-filter:blur(18px) saturate(170%);
+  box-shadow:0 10px 24px -18px rgba(12,23,18,.5)}
+@supports not (background:color-mix(in srgb,red 50%,transparent)){ .stuck{background:var(--ground)} }
+/* ---------- the rolling: the picture drifts, the bar runs out ---------- */
+@keyframes drift{
+  from{transform:scale(1.05)}
+  to{transform:scale(1.15) translate3d(-1.6%,-1.1%,0)}
+}
+.slide img{transform:scale(1.05);will-change:transform}
+/* an animation, not a transition: a transition needs the browser to see a change
+   between two painted frames, and the class lands in the same tick the slide is
+   built, so it never got one. Measured: the transform sat at 1.06 for six seconds. */
+.slide.live img{animation:drift 7.2s linear forwards}
+
+.bar-track{position:absolute;left:14px;right:14px;bottom:12px;z-index:3;display:flex;gap:6px}
+.bar-track button{flex:1;height:var(--touch);padding:0;background:none;display:flex;align-items:flex-end}
+.bar-track button i{display:block;width:100%;height:3px;border-radius:2px;
+  background:rgba(255,255,255,.34);overflow:hidden;position:relative}
+.bar-track button i::after{content:"";position:absolute;inset:0;width:0;border-radius:2px;
+  background:#fff;box-shadow:0 0 10px rgba(255,255,255,.6)}
+@keyframes fill{from{width:0}to{width:100%}}
+.bar-track button.done i::after{width:100%}
+/* an animation, not a transition, for the same reason the hero uses one: a
+   transition needs a change observed between painted frames and the class lands
+   in the same tick. Pausing the animation freezes the bar exactly where the eye
+   last saw it, so nothing has to be measured or remembered. */
+.bar-track button.on i::after{animation:fill var(--roll,5200ms) linear forwards}
+.bar-track button.on.paused i::after{animation-play-state:paused}
+.bar-track button:focus-visible{outline:3px solid #fff;outline-offset:-10px;border-radius:8px}
+
+@media (prefers-reduced-motion:reduce){
+  .slide img,.slide.live img{animation:none;transform:scale(1.02)}
+  .bar-track button.on i::after{animation:none;width:100%}
+  .bleed{display:none}
+}
+
 .cats{display:flex;gap:14px;overflow-x:auto;padding:4px 18px 20px;margin:0 -18px;scrollbar-width:none;
   scroll-snap-type:x proximity}
 .cats::-webkit-scrollbar{display:none}
 .cat{flex:none;scroll-snap-align:start;width:76px;display:grid;justify-items:center;gap:8px}
-.cat .sq{width:72px;height:72px;border-radius:22px;background:var(--tile);display:grid;place-items:center;
-  font-size:36px;line-height:1;box-shadow:var(--lift);border:1px solid var(--line)}
 .cat span{font-size:12.5px;font-weight:700;color:var(--ink-2)}
-.cat.on .sq{background:linear-gradient(145deg,var(--green-l),var(--green-d));box-shadow:var(--lift-green);
-  border-color:transparent}
+/* ---------- the category tiles: photographs, not emoji ---------- */
+.cat .sq{width:72px;height:72px;border-radius:var(--r-pill);display:grid;place-items:center;
+  background:var(--card);box-shadow:var(--lift);border:1px solid var(--line);
+  overflow:hidden;position:relative;transition:box-shadow .22s ease,border-color .22s ease}
+.cat .sq img{width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform .3s cubic-bezier(.2,.8,.3,1)}
+.cat.on .sq{border-color:transparent;box-shadow:var(--lift-green),0 0 0 3px var(--green-l)}
+.cat.on .sq img{transform:scale(1.09)}
 .cat.on span{color:var(--green-d)}
+@media (hover:hover){.cat:hover .sq img{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.cat .sq img{transition:none}}
 
 /* ---------- section heads ---------- */
 .head{display:flex;align-items:center;gap:10px;margin:4px 2px 14px}
@@ -200,6 +265,7 @@ nav a:not(.on){width:var(--touch);flex:none}
 </head>
 <body>
 
+<div class="bleed" id="bleed" aria-hidden="true"></div>
 <div class="phone">
 
   <header>
@@ -221,22 +287,22 @@ nav a:not(.on){width:var(--touch);flex:none}
 
   <div class="deck">
     <div class="slides" id="slides" aria-label="Offers"></div>
-    <div class="dots" id="dots" role="tablist" aria-label="Choose a slide"></div>
+    <div class="bar-track" id="dots" role="tablist" aria-label="Choose a slide"></div>
   </div>
 
-  <div class="cats" role="tablist" aria-label="Category">
-    <button class="cat tap on" role="tab" aria-selected="true"><span class="sq">&#127828;</span><span>Burger</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#127829;</span><span>Pizza</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#127831;</span><span>Chicken</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#127835;</span><span>Curry</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#127836;</span><span>Noodles</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#127846;</span><span>Dessert</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#128722;</span><span>Groceries</span></button>
-    <button class="cat tap" role="tab" aria-selected="false"><span class="sq">&#128138;</span><span>Pharmacy</span></button>
+  <div class="cats rail-feather" role="tablist" aria-label="Category">
+    <button class="cat tap on" role="tab" aria-selected="true"><span class="sq"><img src="food/cat_restaurants.png" alt="" width="72" height="72"></span><span>Restaurants</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_pizza.png" alt="" width="72" height="72"></span><span>Pizza</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_chicken.png" alt="" width="72" height="72"></span><span>Chicken</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_curry.png" alt="" width="72" height="72"></span><span>Curry</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_noodles.png" alt="" width="72" height="72"></span><span>Noodles</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_dessert.png" alt="" width="72" height="72"></span><span>Dessert</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_salad.png" alt="" width="72" height="72"></span><span>Salad</span></button>
+    <button class="cat tap" role="tab" aria-selected="false"><span class="sq"><img src="food/cat_coffee.png" alt="" width="72" height="72"></span><span>Coffee</span></button>
   </div>
 
   <div class="head"><h2>Top picks on Sprint</h2><a href="basket.html" class="tap">See all</a></div>
-  <div class="picks" id="picks"></div>
+  <div class="picks rail-feather" id="picks"></div>
 
   <div class="head"><h2>Popular near you</h2><a href="basket.html" class="tap">See all</a></div>
   <div class="grid" id="grid"></div>
@@ -298,6 +364,7 @@ DECK.forEach(function (d, i) {
 
   var b = document.createElement('button');
   b.setAttribute('role', 'tab'); b.setAttribute('aria-label', 'Slide ' + (i + 1));
+  b.innerHTML = '<i></i>';
   if (!i) b.className = 'on';
   /* light it at once so the tap answers instantly; the poll corrects it
      if the scroll lands somewhere else */
@@ -312,11 +379,36 @@ function go(i){ slides.scrollTo({ left: i * slides.clientWidth, behavior: 'smoot
    IntersectionObserver rooted on it stayed silent too. Reading the number is
    the only approach that proved correct for a swipe, the auto advance and a
    dot tap alike. */
+
+/* The bar has to be re-armed each time, because a CSS transition only runs when
+   the value actually changes. Stripping the class, forcing a reflow, then adding
+   it back is the reliable way to restart it. */
+var ROLL = 5200;
+function arm(i){
+  [].forEach.call(dots.children, function (b, n) {
+    b.classList.remove('on', 'done', 'paused');
+    if (n < i) b.classList.add('done');
+  });
+  var b = dots.children[i];
+  if (!b) return;
+  void b.offsetWidth;
+  b.style.setProperty('--roll', ROLL + 'ms');
+  b.classList.add('on');
+  if (!timer) b.classList.add('paused');
+  [].forEach.call(slides.children, function (sl, n) { sl.classList.toggle('live', n === i); });
+  var img = slides.children[i] && slides.children[i].querySelector('img');
+  var bl = document.getElementById('bleed');
+  if (img && bl) {
+    if (!bl.firstChild) bl.appendChild(document.createElement('img'));
+    if (bl.firstChild.src !== img.src) bl.firstChild.src = img.src;
+  }
+}
+
 var current = -1;
 function light(i){
   if (i === current) return;
   current = i;
-  [].forEach.call(dots.children, function (d, n) { d.classList.toggle('on', n === i); });
+  arm(i);
 }
 /* Reads the scroll position on a timer. Three other ways were tried and each
    failed to fire in at least one real condition: the scroll event never fired
@@ -330,12 +422,16 @@ setInterval(function(){
 
 /* it advances on its own, and stops the moment a thumb touches it */
 var timer = null;
-function stop(){ if (timer) { clearInterval(timer); timer = null; } }
+function stop(){
+  if (timer) { clearInterval(timer); timer = null; }
+  var b = dots.querySelector('.on');
+  if (b) b.classList.add('paused');   /* the animation freezes itself where it is */
+}
 if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
   timer = setInterval(function () {
     if (document.hidden) return;
     go((current + 1) % DECK.length);
-  }, 5200);
+  }, ROLL);
 }
 ['pointerdown','touchstart','wheel','keydown'].forEach(function (e) {
   slides.addEventListener(e, stop, { passive: true, once: true });
@@ -381,6 +477,13 @@ document.querySelectorAll('.cats .cat').forEach(function (b) {
     b.classList.add('on'); b.setAttribute('aria-selected', 'true');
   });
 });
+
+/* the header frosts only once the page has actually moved under it */
+var hdr = document.querySelector('header');
+addEventListener('scroll', function () {
+  hdr.classList.toggle('stuck', scrollY > 8);
+}, { passive: true });
+
 var areas = ['Game City, Gaborone', 'Main Mall, Gaborone', 'Block 9, Gaborone', 'CBD, Gaborone', 'Mogoditshane'];
 var ai = 0;
 document.getElementById('where-btn').addEventListener('click', function () {
