@@ -530,16 +530,38 @@
     return left === 0 ? out : null;
   }
   function piece(t){ return t >= 100 ? 'P' + (t/100) : t + 't'; }
-  var RAILS = [
-    {k:'cash',   t:'Cash',         s:'The rider carries change and leaves the shop with it.'},
-    {k:'card',   t:'Card',         s:'Settles itself. Sprint never holds this money.'},
-    {k:'orange', t:'Orange Money', s:'Paid into the wallet. Sprint pays the shop afterwards.'},
-    {k:'myzaka', t:'MyZaka',       s:'Paid into the wallet. Sprint pays the shop afterwards.'},
-    {k:'smega',  t:'Smega',        s:'Paid into the wallet. Sprint pays the shop afterwards.'}
-  ];
-  var pay = {addr:false, rail:null, tender:null};
+  /* The ways to pay are NOT written here. They are asked of the engine, so this
+     screen can never offer a rail that cannot take money. Four of them are shut
+     today and each says who it is waiting on. */
+  var SAYS = {
+    cash: 'The rider carries change and leaves the shop with it.',
+    card: 'Settles itself. Sprint never holds this money.',
+    orange_money: 'Paid into the wallet. Sprint pays the shop afterwards.',
+    myzaka: 'Paid into the wallet. Sprint pays the shop afterwards.',
+    smega: 'Paid into the wallet. Sprint pays the shop afterwards.'
+  };
+  var RAILS = (E && E.payments)
+    ? Object.keys(E.payments.RAILS)
+        .filter(function(k){ return k !== 'account'; })
+        .map(function(k){
+          var spec = E.payments.RAILS[k];
+          return { k:k, t:spec.label, blocked:spec.blockedBy,
+                   s: spec.blockedBy
+                      ? 'Not switched on yet. Waiting on ' + spec.blockedBy + '.'
+                      : (SAYS[k] || '') };
+        })
+    : [{k:'cash', t:'Cash', s:SAYS.cash, blocked:null}];
+
+  /* The engine's own book of payments. One per demo session, which is the point:
+     the same key put in twice comes back as the same payment. */
+  var BOOK = (E && E.payments) ? new E.payments.MemoryBook() : null;
+  var pay = {addr:false, rail:null, tender:null, taps:0, paid:null, err:null};
   function drawPay(){
     $('p-rails').innerHTML = RAILS.map(function(r){
+      if (r.blocked) {
+        return '<div class="row" style="opacity:.55"><span class="k">&#128274;</span>' +
+          '<div><b>' + r.t + '</b>' + r.s + '</div></div>';
+      }
       return '<div class="row" style="cursor:pointer" data-rail="' + r.k + '"><span class="k' +
         (pay.rail === r.k ? ' done' : '') + '">' + (pay.rail === r.k ? '&#10003;' : '&#9675;') +
         '</span><div><b>' + r.t + '</b>' + r.s + '</div></div>';
@@ -576,6 +598,25 @@
       '<div><span>Delivery</span><b>' + P(SHOP.fee) + '</b></div>' +
       '<div style="font-size:15px;color:#111"><b>Total</b><b>' + P(total()) + '</b></div>';
 
+    /* the visible proof: press it as often as you like, it is one payment */
+    var proof = '';
+    if (pay.err) {
+      proof = '<div class="note bad">' + pay.err + '</div>';
+    } else if (pay.paid && BOOK) {
+      proof = '<div class="note good"><b>Pressed ' + pay.taps + ' ' +
+        (pay.taps === 1 ? 'time' : 'times') + '. ' + BOOK.all().length +
+        ' payment.</b> The engine was handed the same key every time and gave back the ' +
+        'same payment, so a customer on a bad line cannot be charged twice. ' +
+        E.payments.pula(pay.paid.amount_thebe) + ', ' + pay.paid.state.replace(/_/g, ' ') + '.</div>';
+    }
+    $('p-door').insertAdjacentHTML('afterend', '');
+    var slot = $('p-proof');
+    if (!slot) {
+      $('p-money').insertAdjacentHTML('beforebegin', '<div id="p-proof"></div>');
+      slot = $('p-proof');
+    }
+    slot.innerHTML = proof;
+
     var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
     var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk;
     $('p-why').textContent = basket.count() === 0 ? 'Your basket is empty'
@@ -591,16 +632,37 @@
     pay.addr = t.getAttribute('data-a') === 'yes'; drawPay();
   };
   $('p-rails').onclick = function(e){
-    var r = e.target.closest('[data-rail]'); if (!r) return;
-    pay.rail = r.getAttribute('data-rail'); pay.tender = null; drawPay();
+    var r = e.target.closest('[data-rail]'); if (!r) return;   /* shut rails carry no data-rail */
+    pay.rail = r.getAttribute('data-rail');
+    pay.tender = null; pay.taps = 0; pay.paid = null; pay.err = null;
+    drawPay();
   };
   $('p-cash').onclick = function(e){
     var t = e.target.closest('[data-v]'); if (!t) return;
     pay.tender = +t.getAttribute('data-v'); drawPay();
   };
   $('p-place').onclick = function(){
+    /* The key is made from the order and the rail, so it is the SAME key every
+       time this button is pressed for this order. That is the whole trick: the
+       engine hands back the payment it already made instead of making another. */
+    if (BOOK) {
+      pay.taps += 1;
+      var key = 'SPR-' + SHOP.id + '-' + pay.rail + '-' + total();
+      try {
+        pay.paid = E.payments.take(BOOK, {
+          key: key, order_id: 'SPR-' + SHOP.id,
+          rail: pay.rail, amount_thebe: total()
+        });
+        pay.err = null;
+      } catch (err) {
+        pay.err = err.message; pay.paid = null;
+        drawPay();
+        return;   /* nothing was taken, so nothing moves on */
+      }
+      drawPay();
+    }
     ORDER.goods = basket.goods();
-    ORDER.rail = pay.rail || 'myzaka';
+    ORDER.rail = pay.rail || 'cash';
     oReset(HAPPY); show('order');
   };
 

@@ -63,6 +63,7 @@
     return allowedEvents(state, actor).some((t) => t.event === event);
   }
   function apply(state, event, opts) {
+    var _a;
     const { actor } = opts;
     if (isTerminal(state)) {
       throw new TransitionError(`Order is ${state} and finished, ${event} cannot be applied`);
@@ -85,7 +86,7 @@
       fault: match.faultRequired ? opts.fault : "none",
       event,
       actor,
-      at: opts.at ?? (/* @__PURE__ */ new Date()).toISOString(),
+      at: (_a = opts.at) != null ? _a : (/* @__PURE__ */ new Date()).toISOString(),
       says: match.says
     };
   }
@@ -273,6 +274,7 @@
     }
   }
   function dayPayout(day, orders, agreed) {
+    var _a;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new SettlementError("A payout needs a day, as 2026-09-13.");
     const byMerchant = /* @__PURE__ */ new Map();
     let fees = 0, absorbed = 0;
@@ -280,7 +282,7 @@
       const s = settleOne(o);
       fees += s.sprint_fee;
       absorbed += s.sprint_absorbs;
-      const line = byMerchant.get(o.merchant_id) ?? {
+      const line = (_a = byMerchant.get(o.merchant_id)) != null ? _a : {
         merchant_id: o.merchant_id,
         merchant_name: o.merchant_name,
         orders: 0,
@@ -321,7 +323,7 @@
   }
   function readyToPay(p) {
     if (!p.agreed) {
-      return { ready: false, says: "The fault model is still a proposal, so nothing can be paid out yet." };
+      return { ready: false, says: "The fault model is still a proposal, so nothing can be paid out yet. Barbara has it." };
     }
     if (p.total < 0) {
       return { ready: false, says: "The day works out to less than nothing, which means something is wrong. A person must look." };
@@ -358,12 +360,512 @@
     }
   });
 
+  // ../api/src/orders/payments.ts
+  var payments_exports = {};
+  __export(payments_exports, {
+    MemoryBook: () => MemoryBook,
+    PaymentError: () => PaymentError,
+    RAILS: () => RAILS,
+    THEBE: () => THEBE,
+    UnconfiguredRail: () => UnconfiguredRail,
+    canMove: () => canMove,
+    isFinal: () => isFinal,
+    move: () => move,
+    netOf: () => netOf,
+    pula: () => pula2,
+    railCost: () => railCost,
+    railsAvailableToday: () => railsAvailableToday,
+    railsWaitingOnSomebody: () => railsWaitingOnSomebody,
+    refund: () => refund,
+    take: () => take
+  });
+  function railsAvailableToday() {
+    return Object.keys(RAILS).filter((r) => RAILS[r].blockedBy === null);
+  }
+  function railsWaitingOnSomebody() {
+    return Object.keys(RAILS).filter((r) => RAILS[r].blockedBy !== null).map((r) => ({ rail: r, blockedBy: RAILS[r].blockedBy }));
+  }
+  function railCost(rail, amountThebe) {
+    const spec = RAILS[rail];
+    if (amountThebe < 0) throw new PaymentError("An amount cannot be negative.");
+    return Math.round(amountThebe * spec.costBp / 1e4) + spec.costFlatThebe;
+  }
+  function netOf(rail, amountThebe) {
+    return amountThebe - railCost(rail, amountThebe);
+  }
+  function pula2(thebe) {
+    const sign = thebe < 0 ? "-" : "";
+    const n = Math.abs(thebe);
+    return sign + "P" + Math.floor(n / THEBE) + "." + String(n % THEBE).padStart(2, "0");
+  }
+  function canMove(from, to) {
+    return MOVES[from].includes(to);
+  }
+  function isFinal(s) {
+    return MOVES[s].length === 0;
+  }
+  function take(book, req) {
+    if (!req.key) throw new PaymentError("A payment needs an idempotency key.");
+    if (!Number.isInteger(req.amount_thebe)) {
+      throw new PaymentError("Money is whole thebe. " + req.amount_thebe + " is not.");
+    }
+    if (req.amount_thebe <= 0) throw new PaymentError("An amount must be more than nothing.");
+    const existing = book.get(req.key);
+    if (existing) {
+      if (existing.order_id !== req.order_id || existing.rail !== req.rail || existing.amount_thebe !== req.amount_thebe) {
+        throw new PaymentError(
+          "This key has already been used for a different payment. Refusing to charge again."
+        );
+      }
+      return existing;
+    }
+    const spec = RAILS[req.rail];
+    if (spec.blockedBy) {
+      throw new PaymentError(spec.label + " is not switched on yet: " + spec.blockedBy);
+    }
+    if (req.amount_thebe < spec.minThebe) {
+      throw new PaymentError(spec.label + " does not take amounts under " + pula2(spec.minThebe) + ".");
+    }
+    if (req.amount_thebe > spec.maxThebe) {
+      throw new PaymentError(spec.label + " does not take amounts over " + pula2(spec.maxThebe) + ".");
+    }
+    const p = {
+      key: req.key,
+      order_id: req.order_id,
+      rail: req.rail,
+      amount_thebe: req.amount_thebe,
+      state: spec.needsCustomerAction ? "awaiting_customer" : "created",
+      cost_thebe: 0,
+      refunded_thebe: 0,
+      rail_ref: null,
+      says: spec.needsCustomerAction ? "Approve " + pula2(req.amount_thebe) + " on your phone." : pula2(req.amount_thebe) + " due at the door."
+    };
+    book.put(p);
+    return p;
+  }
+  function move(book, key, to, railRef) {
+    const p = book.get(key);
+    if (!p) throw new PaymentError("No payment with that key.");
+    if (!canMove(p.state, to)) {
+      throw new PaymentError("A payment cannot go from " + p.state + " to " + to + ".");
+    }
+    p.state = to;
+    if (railRef) p.rail_ref = railRef;
+    if (to === "captured") {
+      p.cost_thebe = railCost(p.rail, p.amount_thebe);
+      p.says = pula2(p.amount_thebe) + " received.";
+    }
+    if (to === "failed") p.says = "That payment did not go through. Nothing was taken.";
+    if (to === "cancelled") p.says = "Payment cancelled. Nothing was taken.";
+    book.put(p);
+    return p;
+  }
+  function refund(book, key, amountThebe) {
+    const p = book.get(key);
+    if (!p) throw new PaymentError("No payment with that key.");
+    if (p.state !== "captured") throw new PaymentError("Only money actually taken can be sent back.");
+    if (!RAILS[p.rail].refundable) {
+      throw new PaymentError(
+        RAILS[p.rail].label + " cannot be refunded by software. This one goes through settlement."
+      );
+    }
+    if (!Number.isInteger(amountThebe) || amountThebe <= 0) {
+      throw new PaymentError("A refund must be a whole amount of thebe, more than nothing.");
+    }
+    if (p.refunded_thebe + amountThebe > p.amount_thebe) {
+      throw new PaymentError("That is more than was taken.");
+    }
+    p.refunded_thebe += amountThebe;
+    if (p.refunded_thebe === p.amount_thebe) p.state = "refunded";
+    p.says = pula2(p.refunded_thebe) + " sent back.";
+    book.put(p);
+    return p;
+  }
+  var THEBE, PaymentError, RAILS, MOVES, MemoryBook, UnconfiguredRail;
+  var init_payments = __esm({
+    "../api/src/orders/payments.ts"() {
+      THEBE = 100;
+      PaymentError = class extends Error {
+      };
+      RAILS = {
+        cash: {
+          label: "Cash at the door",
+          needsCustomerAction: false,
+          refundable: false,
+          // a rider cannot un-take cash; this goes through settlement
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 0,
+          maxThebe: 1e5,
+          // P1000, the cap cash.ts already enforces
+          blockedBy: null
+        },
+        orange_money: {
+          label: "Orange Money",
+          needsCustomerAction: true,
+          // the customer approves on their handset
+          refundable: true,
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 100,
+          maxThebe: 5e5,
+          blockedBy: "Orange Money merchant credentials and rate (email queued Monday 10:05)"
+        },
+        myzaka: {
+          label: "MyZaka",
+          needsCustomerAction: true,
+          refundable: true,
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 100,
+          maxThebe: 5e5,
+          blockedBy: "Mascom MyZaka merchant credentials and rate (email queued Monday 10:35)"
+        },
+        smega: {
+          label: "Smega",
+          needsCustomerAction: true,
+          refundable: true,
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 100,
+          maxThebe: 5e5,
+          blockedBy: "BTC Smega merchant credentials and rate (email queued Monday 11:05)"
+        },
+        card: {
+          label: "Card",
+          needsCustomerAction: true,
+          refundable: true,
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 100,
+          maxThebe: 2e6,
+          blockedBy: "A card gateway chosen and signed: DPO or Tingg"
+        },
+        account: {
+          label: "On account",
+          needsCustomerAction: false,
+          refundable: true,
+          costBp: 0,
+          costFlatThebe: 0,
+          minThebe: 0,
+          maxThebe: 1e7,
+          blockedBy: null
+          // corporate.ts already governs who may do this
+        }
+      };
+      MOVES = {
+        created: ["awaiting_customer", "captured", "failed", "cancelled"],
+        awaiting_customer: ["captured", "failed", "cancelled"],
+        captured: ["refunded"],
+        failed: [],
+        cancelled: [],
+        refunded: []
+      };
+      MemoryBook = class {
+        constructor() {
+          this.m = /* @__PURE__ */ new Map();
+        }
+        get(key) {
+          return this.m.get(key);
+        }
+        put(p) {
+          this.m.set(p.key, p);
+        }
+        all() {
+          return [...this.m.values()];
+        }
+      };
+      UnconfiguredRail = class {
+        constructor(rail) {
+          this.rail = rail;
+        }
+        async charge() {
+          var _a;
+          const spec = RAILS[this.rail];
+          throw new PaymentError(
+            spec.label + " has no credentials on this machine. Waiting on: " + ((_a = spec.blockedBy) != null ? _a : "nothing")
+          );
+        }
+      };
+    }
+  });
+
+  // ../api/src/orders/cash.ts
+  var cash_exports = {};
+  __export(cash_exports, {
+    CASH_CAP_THEBE: () => CASH_CAP_THEBE,
+    CashError: () => CashError,
+    FLOAT_SIGNOFF_THEBE: () => FLOAT_SIGNOFF_THEBE,
+    NOTES: () => NOTES,
+    THEBE: () => THEBE2,
+    WRITE_OFF_THEBE: () => WRITE_OFF_THEBE,
+    cashAllowed: () => cashAllowed,
+    changeFor: () => changeFor,
+    floatFor: () => floatFor,
+    needsCashPhoto: () => needsCashPhoto,
+    payableWith: () => payableWith,
+    pula: () => pula3,
+    reconcile: () => reconcile
+  });
+  function pula3(thebe) {
+    return `P${(thebe / THEBE2).toFixed(2)}`;
+  }
+  function cashAllowed(totalThebe) {
+    if (!Number.isInteger(totalThebe) || totalThebe <= 0) {
+      throw new CashError("An order total must be a whole number of thebe before cash can be offered.");
+    }
+    if (totalThebe > CASH_CAP_THEBE) {
+      return {
+        allowed: false,
+        says: `Orders over ${pula3(CASH_CAP_THEBE)} cannot be paid in cash. Please choose another way to pay.`
+      };
+    }
+    return { allowed: true, says: "You can pay the rider in cash" };
+  }
+  function payableWith(totalThebe) {
+    return NOTES.filter((n) => n >= totalThebe || n >= smallestCovering(totalThebe));
+  }
+  function smallestCovering(totalThebe) {
+    const fits = NOTES.filter((n) => n >= totalThebe);
+    return fits.length ? Math.min(...fits) : Math.max(...NOTES);
+  }
+  function changeFor(totalThebe, payingWithThebe) {
+    const check = cashAllowed(totalThebe);
+    if (!check.allowed) throw new CashError(check.says);
+    if (!NOTES.includes(payingWithThebe)) {
+      throw new CashError(`${pula3(payingWithThebe)} is not a note. Choose one the customer will actually hand over.`);
+    }
+    if (payingWithThebe < totalThebe) {
+      throw new CashError(
+        `${pula3(payingWithThebe)} does not cover ${pula3(totalThebe)}. Choose a bigger note.`
+      );
+    }
+    const change = payingWithThebe - totalThebe;
+    return {
+      change,
+      riderNeeds: change,
+      says: change === 0 ? "No change needed, the customer has it exactly" : `Your rider will bring ${pula3(change)} change`
+    };
+  }
+  function floatFor(orders) {
+    const per_order = orders.map((o) => ({
+      order_id: o.order_id,
+      change: changeFor(o.total, o.paying_with).change
+    }));
+    const float = per_order.reduce((a, b) => a + b.change, 0);
+    const needs_signoff = float > FLOAT_SIGNOFF_THEBE;
+    return {
+      float,
+      needs_signoff,
+      per_order,
+      says: needs_signoff ? `${pula3(float)} float, which needs a supervisor to hand it over and sign` : `${pula3(float)} float for ${orders.length} cash order${orders.length === 1 ? "" : "s"}`
+    };
+  }
+  function reconcile(floatOut, orders, countedIn) {
+    if (!Number.isInteger(countedIn) || countedIn < 0) {
+      throw new CashError("The counted amount must be a whole number of thebe. Count it again.");
+    }
+    const collected = orders.reduce((a, o) => a + o.paying_with, 0);
+    const givenOut = orders.reduce((a, o) => a + changeFor(o.total, o.paying_with).change, 0);
+    const expected = floatOut + collected - givenOut;
+    const difference = countedIn - expected;
+    const within = Math.abs(difference) <= WRITE_OFF_THEBE;
+    return {
+      expected,
+      counted: countedIn,
+      difference,
+      short: difference < 0,
+      within_write_off: within,
+      says: difference === 0 ? "Balanced exactly" : within ? `${pula3(Math.abs(difference))} ${difference < 0 ? "short" : "over"}, inside the write off, closed` : `${pula3(Math.abs(difference))} ${difference < 0 ? "SHORT" : "OVER"}, this one needs a person to look at it`
+    };
+  }
+  function needsCashPhoto(totalThebe) {
+    return totalThebe >= 2e4;
+  }
+  var NOTES, THEBE2, CASH_CAP_THEBE, FLOAT_SIGNOFF_THEBE, WRITE_OFF_THEBE, CashError;
+  var init_cash = __esm({
+    "../api/src/orders/cash.ts"() {
+      NOTES = [2e4, 1e4, 5e3, 2e3, 1e3];
+      THEBE2 = 100;
+      CASH_CAP_THEBE = 1e5;
+      FLOAT_SIGNOFF_THEBE = 5e4;
+      WRITE_OFF_THEBE = 500;
+      CashError = class extends Error {
+        constructor(message) {
+          super(message);
+          this.name = "CashError";
+        }
+      };
+    }
+  });
+
+  // ../api/src/catalog/verticals.ts
+  var verticals_exports = {};
+  __export(verticals_exports, {
+    VERTICALS: () => VERTICALS,
+    allVerticals: () => allVerticals,
+    gatesFor: () => gatesFor,
+    groupByVertical: () => groupByVertical,
+    isVertical: () => isVertical,
+    mayList: () => mayList,
+    rulesFor: () => rulesFor
+  });
+  function allVerticals() {
+    return Object.keys(VERTICALS).sort(
+      (a, b) => VERTICALS[a].order - VERTICALS[b].order
+    );
+  }
+  function isVertical(v) {
+    return Object.prototype.hasOwnProperty.call(VERTICALS, v);
+  }
+  function rulesFor(v) {
+    return VERTICALS[v];
+  }
+  function gatesFor(v) {
+    const r = VERTICALS[v];
+    const gates = [];
+    if (r.ageRestricted) gates.push("identity checked at the door");
+    if (r.licenceRequired) gates.push("merchant licence on file");
+    if (r.tradingHours) gates.push("handover inside licensed hours");
+    if (r.prescription) gates.push("pharmacist dispensed and sealed");
+    if (r.coldChain) gates.push("cold box where flagged");
+    return gates;
+  }
+  function mayList(v) {
+    const r = VERTICALS[v];
+    if (r.blockedBy) return { listable: false, reason: r.blockedBy };
+    return { listable: true, reason: null };
+  }
+  function groupByVertical(merchants) {
+    var _a;
+    const unplaced = [];
+    const bucket = /* @__PURE__ */ new Map();
+    for (const m of merchants) {
+      if (!isVertical(m.type)) {
+        unplaced.push(m);
+        continue;
+      }
+      const list = (_a = bucket.get(m.type)) != null ? _a : [];
+      list.push(m);
+      bucket.set(m.type, list);
+    }
+    const sections = [];
+    const blocked = [];
+    for (const v of allVerticals()) {
+      const found = bucket.get(v);
+      if (!found || found.length === 0) continue;
+      if (!mayList(v).listable) {
+        blocked.push(v);
+        continue;
+      }
+      sections.push({
+        vertical: v,
+        label: VERTICALS[v].label,
+        gates: gatesFor(v),
+        merchants: found
+      });
+    }
+    return { sections, unplaced, blocked };
+  }
+  var VERTICALS;
+  var init_verticals = __esm({
+    "../api/src/catalog/verticals.ts"() {
+      VERTICALS = {
+        food: {
+          label: "Restaurants",
+          order: 1,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+        },
+        grocery: {
+          label: "Groceries",
+          order: 2,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: true,
+          // frozen and chilled baskets travel in a cold box
+          blockedBy: null
+        },
+        pet: {
+          label: "Pet and vet",
+          order: 3,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+        },
+        hardware: {
+          label: "Hardware and home",
+          order: 4,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+        },
+        baby: {
+          label: "Baby and kids",
+          order: 5,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+        },
+        parcel: {
+          label: "Send a parcel",
+          order: 6,
+          ageRestricted: false,
+          licenceRequired: false,
+          tradingHours: false,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+        },
+        liquor: {
+          label: "Liquor",
+          order: 7,
+          ageRestricted: true,
+          licenceRequired: true,
+          tradingHours: true,
+          prescription: false,
+          coldChain: false,
+          blockedBy: null
+          // the gates are built; a merchant licence is a merchant problem
+        },
+        pharmacy: {
+          label: "Pharmacy",
+          order: 8,
+          ageRestricted: true,
+          licenceRequired: true,
+          tradingHours: false,
+          prescription: true,
+          coldChain: true,
+          blockedBy: "BoMRA's written answer on carrying a sealed, pharmacist dispensed prescription (brick 8)"
+        }
+      };
+    }
+  });
+
   // engine-public.ts
   var require_engine_public = __commonJS({
     "engine-public.ts"() {
       init_state_machine();
       init_settlement();
-      window.Engine = { machine: state_machine_exports, settlement: settlement_exports };
+      init_payments();
+      init_cash();
+      init_verticals();
+      window.Engine = { machine: state_machine_exports, settlement: settlement_exports, payments: payments_exports, cash: cash_exports, verticals: verticals_exports };
     }
   });
   require_engine_public();
