@@ -189,6 +189,40 @@ header.stuck{background:color-mix(in srgb,var(--ground) 72%,transparent);
 .pick .ph{-webkit-mask-image:linear-gradient(to bottom,#000 92%,transparent 100%);
   mask-image:linear-gradient(to bottom,#000 92%,transparent 100%)}
 
+/* ---------- the demo strip: this page is public and its shops are invented ---------- */
+.demo-strip{display:flex;align-items:center;gap:9px;background:#2A2118;color:#FFD9A0;
+  padding:9px 18px;font-size:12.5px;line-height:1.35;font-weight:600}
+.demo-strip svg{width:15px;height:15px;flex:none;fill:none;stroke:#F7941D;stroke-width:2;
+  stroke-linecap:round}
+.demo-strip b{color:#fff;font-weight:700}
+
+/* ---------- a row of shops of one kind ---------- */
+.kind-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:22px 18px 10px}
+.kind-head h2{margin:0;font-size:18px;letter-spacing:-.3px}
+.kind-head .gate{font-size:11.5px;color:var(--mid);font-weight:600}
+.shops{display:flex;gap:12px;overflow-x:auto;padding:2px 18px 6px;scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.shops::-webkit-scrollbar{display:none}
+.shop-card{flex:0 0 150px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-card);overflow:hidden;text-decoration:none;color:inherit;display:block}
+.shop-card .ph{position:relative;height:96px;background:#DCE3DD;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,#000 92%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 92%,transparent 100%)}
+.shop-card .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.shop-card .body{padding:9px 11px 11px}
+.shop-card h3{margin:0 0 2px;font-size:13.5px;line-height:1.25}
+.shop-card .meta{font-size:11.5px;color:var(--mid);display:flex;gap:7px;align-items:center}
+.shop-card .meta b{color:var(--ink);font-weight:700}
+
+/* ---------- the row the law keeps shut ---------- */
+.kind-locked{margin:14px 18px 0;background:#F6F2EA;border:1px dashed #D8C9A8;border-radius:var(--r-card);
+  padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+.kind-locked svg{width:19px;height:19px;flex:none;fill:none;stroke:#8A6D2F;stroke-width:1.9;
+  stroke-linecap:round;margin-top:1px}
+.kind-locked h3{margin:0 0 3px;font-size:14px}
+.kind-locked p{margin:0;font-size:12.5px;color:#6B5A3C;line-height:1.45}
+
 /* ---------- the rolling: the picture drifts, the bar runs out ---------- */
 @keyframes drift{
   from{transform:scale(1.05)}
@@ -307,6 +341,11 @@ nav a:not(.on){width:var(--touch);flex:none}
 
 <div class="bleed" id="bleed" aria-hidden="true"></div>
 <div class="phone">
+  <div class="demo-strip">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>
+    <span><b>Demonstration.</b> Every shop, price and delivery time on this page is an
+    example. Nothing here is a real offer.</span>
+  </div>
 
   <header>
     <button class="where tap" id="where-btn" aria-label="Change delivery area">
@@ -343,6 +382,9 @@ nav a:not(.on){width:var(--touch);flex:none}
 
   <div class="head"><h2>Top picks on Sprint</h2><a href="basket.html" class="tap">See all</a></div>
   <div class="picks rail-feather" id="picks"></div>
+
+  <!-- one app, many kinds of shop: drawn from KINDS, in the engine's own order -->
+  <div id="kinds"></div>
 
   <div class="head"><h2>Popular near you</h2><a href="basket.html" class="tap">See all</a></div>
   <div class="grid" id="grid"></div>
@@ -560,6 +602,64 @@ var PICKS = [
   { p:1, name:'Margherita',          shop:'Main Mall Pizza Co.', mins:30, note:'P15 delivery', price:'P89' },
   { p:2, name:'Fried chicken, 6 pc', shop:'Kgale Kitchen',       mins:20, note:'P15 delivery', price:'P120' }
 ];
+/* ----------------------------------------------------------------
+   The shop kinds. These mirror api/src/catalog/verticals.ts on
+   purpose: same order, same labels, same gates. If the two ever
+   disagree, the engine is right and this file is wrong, because the
+   engine is the thing with 16 tests standing over it.
+
+   Every shop name below is INVENTED. Not one of them has signed
+   anything. The demo strip at the top of the page says so.
+   ---------------------------------------------------------------- */
+var KINDS = [
+  { key:'food',    label:'Restaurants',     gate:'',
+    shops:[ { n:'Mokolodi Grill',    img:'food/burger.jpg',  mins:'25 min', fee:'P15' },
+            { n:'Main Mall Pizza Co.',img:'food/pizza.jpg',   mins:'30 min', fee:'P15' },
+            { n:'Kgale Kitchen',     img:'food/chicken.jpg', mins:'20 min', fee:'P15' } ] },
+  { key:'grocery', label:'Groceries',       gate:'cold box where flagged',
+    shops:[ { n:'Riverwalk Grocer',  img:'food/hero2.jpg',   mins:'45 min', fee:'P20' },
+            { n:'Extension Market',  img:'food/cat_salad.png', mins:'50 min', fee:'P20' } ] },
+  { key:'pet',     label:'Pet and vet',     gate:'',
+    shops:[ { n:'Gaborone Pet Supply', img:'food/cat_pet.jpg', mins:'40 min', fee:'P20' } ] },
+  { key:'hardware',label:'Hardware and home', gate:'',
+    shops:[ { n:'Broadhurst Hardware', img:'food/cat_hardware.jpg', mins:'55 min', fee:'P25' } ] }
+];
+
+/* The one the law keeps shut. Drawn, not hidden, so nobody can quietly open it. */
+var LOCKED = {
+  label:'Pharmacy',
+  why:'Waiting on BoMRA to answer in writing whether a licensed courier may carry a sealed, pharmacist dispensed prescription. Until that letter exists this cannot open, and the engine refuses to list it.'
+};
+
+var kinds = document.getElementById('kinds');
+KINDS.forEach(function (k) {
+  var head = document.createElement('div');
+  head.className = 'kind-head';
+  head.innerHTML = '<h2>' + k.label + '</h2>' +
+    (k.gate ? '<span class="gate">' + k.gate + '</span>' : '');
+  kinds.appendChild(head);
+
+  var rail = document.createElement('div');
+  rail.className = 'shops rail-feather';
+  k.shops.forEach(function (sh) {
+    var a = document.createElement('a');
+    a.className = 'shop-card tap'; a.href = 'basket.html';
+    a.innerHTML = '<div class="ph"><img alt="" src="' + sh.img + '"></div>' +
+      '<div class="body"><h3>' + sh.n + '</h3>' +
+      '<div class="meta"><b>' + sh.mins + '</b><span>' + sh.fee + ' delivery</span></div></div>';
+    a.querySelector('img').addEventListener('error', function () { this.remove(); });
+    rail.appendChild(a);
+  });
+  kinds.appendChild(rail);
+});
+
+var lock = document.createElement('div');
+lock.className = 'kind-locked';
+lock.innerHTML = '<svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/>' +
+  '<path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>' +
+  '<div><h3>' + LOCKED.label + ' &mdash; not open</h3><p>' + LOCKED.why + '</p></div>';
+kinds.appendChild(lock);
+
 var GRID = [
   { p:3, name:'Ramen bowl' }, { p:4, name:'Flat white' },
   { p:0, name:'Cheeseburger' }, { p:1, name:'Pizza slice' }
