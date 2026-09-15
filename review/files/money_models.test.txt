@@ -1,0 +1,97 @@
+/**
+ * Two money models live in this codebase and they disagree. This file holds that
+ * fact still so nobody has to rediscover it.
+ *
+ * Found 15 September 2026 while checking the settlement rules, after the P200
+ * cash ceiling had already shown that a number can sit under passing tests for
+ * weeks and still be wrong.
+ *
+ *   settlement.ts        pays a merchant 100 percent of the goods on a delivered
+ *                        order, and Sprint keeps only the delivery fee.
+ *   ledger.repo.ts       splits the same order 75 percent merchant, 18 percent
+ *                        courier, the remainder to Sprint.
+ *
+ * Only the first one decides what anybody is paid. The second feeds the
+ * simulator and nothing else. Neither is policy: docs/FAULT_MODEL.md still says
+ * "Status: proposed. Not yet agreed by Barbara."
+ *
+ * These tests do not pick a winner. That is Barbara's decision and Luther's.
+ * They make sure the disagreement cannot be forgotten, cannot drift, and cannot
+ * quietly become the thing that pays real merchants.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { settleOne, dayPayout, readyToPay, type SettleableOrder } from './settlement';
+import { SIMULATOR_SPLIT } from '../data-store/repositories/ledger.repo';
+
+const order = (over: Partial<SettleableOrder> = {}): SettleableOrder => ({
+  order_id: 'SPR-1',
+  merchant_id: 'M1',
+  merchant_name: 'Broadhurst Hardware',
+  goods: 20000, // P200
+  delivery_fee: 2500, // P25
+  rail: 'cash',
+  fault: 'none',
+  delivered: true,
+  perishable: false,
+  ...over,
+});
+
+test('SETTLEMENT TAKES NO COMMISSION: a delivered order pays the merchant every thebe of the goods', () => {
+  const s = settleOne(order());
+  assert.equal(s.merchant, 20000, 'the merchant is paid the goods in full');
+  assert.equal(s.sprint_fee, 2500, 'Sprint keeps only the delivery fee');
+  assert.equal(s.merchant + s.sprint_fee, 22500);
+});
+
+test('so Sprint earns the delivery fee and nothing else on the basket', () => {
+  const s = settleOne(order({ goods: 500000 })); // a P5000 basket
+  assert.equal(s.sprint_fee, 2500, 'a twenty five times bigger basket earns Sprint the same P25');
+  assert.equal(s.merchant, 500000);
+});
+
+test('THE OTHER MODEL DISAGREES, and it is marked as not agreed', () => {
+  assert.equal(SIMULATOR_SPLIT.agreed, false, 'this became policy without anybody saying so');
+  assert.equal(SIMULATOR_SPLIT.merchant, 0.75);
+  assert.equal(SIMULATOR_SPLIT.courier, 0.18);
+  assert.match(SIMULATOR_SPLIT.contradicts, /100 percent/);
+});
+
+test('the two models really do disagree, by a quarter of every basket', () => {
+  const o = order();
+  const bySettlement = settleOne(o).merchant;
+  const byLedger = Math.round(o.goods * SIMULATOR_SPLIT.merchant);
+  assert.notEqual(bySettlement, byLedger);
+  assert.equal(bySettlement - byLedger, 5000, 'P50 on a P200 basket, every time');
+});
+
+test('nothing can be paid to anybody until Barbara agrees the fault model', () => {
+  const day = dayPayout('2026-09-15', [order()], false);
+  const verdict = readyToPay(day);
+  assert.equal(verdict.ready, false);
+  assert.match(verdict.says, /still a proposal|Barbara/);
+});
+
+test('and the day total says so on its face, not in a footnote', () => {
+  const day = dayPayout('2026-09-15', [order()], false);
+  assert.match(day.says, /NOT PAYABLE/);
+});
+
+test('even once agreed, the day only pays what the rules worked out', () => {
+  const agreed = dayPayout('2026-09-15', [order()], true);
+  assert.equal(readyToPay(agreed).ready, true);
+  assert.equal(agreed.total, 20000, 'the merchant is owed the goods in full, no commission taken');
+});
+
+test('a fault that is nobody s does not quietly punish the merchant', () => {
+  const s = settleOne(order({ delivered: false, fault: 'none', perishable: true }));
+  assert.equal(s.perishable_loss, 20000, 'goods that cannot go back on a shelf are covered');
+  assert.equal(s.sprint_fee, 0, 'Sprint does not charge for a delivery that did not happen');
+});
+
+test('when Sprint is at fault, Sprint carries it, including the fee it did not earn', () => {
+  const s = settleOne(order({ delivered: false, fault: 'sprint', perishable: true }));
+  assert.equal(s.sprint_absorbs, 20000 + 2500);
+  assert.equal(s.merchant, 0);
+});

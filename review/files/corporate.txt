@@ -1,0 +1,200 @@
+/**
+ * Brick 35. Corporate accounts.
+ *
+ * This is where the money already is. The banks and the land boards are on contract today and they
+ * do not pay per delivery with a card at a gate. They order against an account, they split the cost
+ * across their own cost centres, and finance pays one invoice a month.
+ *
+ * Neither Wanzy nor Zebras can do this at all, and it is the whole reason the app is worth building
+ * for an incumbent rather than a startup. A consumer app that cannot invoice a bank is a consumer
+ * app. This file is the difference.
+ *
+ * Three rules, each learned from how these accounts actually go wrong:
+ *
+ *   1. EVERY ORDER CARRIES A COST CENTRE. A corporate customer whose invoice cannot be split by
+ *      department will not pay it, they will query it, and the query takes longer than the delivery.
+ *   2. THE CREDIT LIMIT IS CHECKED WHEN THE ORDER IS PLACED, not when the invoice is raised. A
+ *      limit discovered at month end is a limit that was never a limit.
+ *   3. PRICES ARE ALREADY ALL INCLUSIVE. The domestic tariff includes VAT and the fuel surcharge,
+ *      so an invoice that adds either on top double charges the customer. That is how a bank stops
+ *      trusting a supplier.
+ */
+
+export interface CostCentre {
+  code: string;
+  name: string;
+}
+
+export interface CorporateAccount {
+  id: string;
+  company: string;
+  /** Who at the company approves the bill. Never the same person who places orders. */
+  billing_contact: string;
+  billing_email: string;
+  /** In thebe. Zero means no limit was agreed, which is treated as no credit at all. */
+  credit_limit: number;
+  payment_terms_days: number;
+  cost_centres: CostCentre[];
+  active: boolean;
+}
+
+export interface CorporateOrder {
+  order_id: string;
+  account_id: string;
+  cost_centre: string;
+  /** In thebe, all inclusive. */
+  amount: number;
+  placed_at: string;
+  description: string;
+}
+
+export class CorporateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CorporateError';
+  }
+}
+
+export function pula(thebe: number): string {
+  return `P${(thebe / 100).toFixed(2)}`;
+}
+
+/** Can this account place this order right now. Checked at order time, never at invoice time. */
+export function canOrder(
+  account: CorporateAccount,
+  outstanding: number,
+  amount: number,
+  costCentre: string,
+): { allowed: boolean; says: string } {
+  if (!account.active) {
+    return { allowed: false, says: `The ${account.company} account is on hold. Please speak to your account manager.` };
+  }
+  if (!account.cost_centres.some((c) => c.code === costCentre)) {
+    const codes = account.cost_centres.map((c) => c.code).join(', ');
+    return { allowed: false, says: `Choose which cost centre this is for. Yours are ${codes}.` };
+  }
+  if (account.credit_limit <= 0) {
+    return { allowed: false, says: `No credit limit has been agreed for ${account.company} yet.` };
+  }
+  if (outstanding + amount > account.credit_limit) {
+    const room = Math.max(0, account.credit_limit - outstanding);
+    return {
+      allowed: false,
+      says: `This would take ${account.company} past its limit of ${pula(account.credit_limit)}. There is ${pula(room)} left.`,
+    };
+  }
+  return { allowed: true, says: 'Charged to the account' };
+}
+
+export interface StatementLine {
+  cost_centre: string;
+  cost_centre_name: string;
+  orders: number;
+  total: number;
+}
+
+export interface Statement {
+  account: string;
+  company: string;
+  number: string;
+  period_from: string;
+  period_to: string;
+  due_date: string;
+  lines: StatementLine[];
+  orders: CorporateOrder[];
+  total: number;
+  all_inclusive: true;
+  note: string;
+}
+
+/** Invoice numbers a person can read out over the phone, and that sort in order. */
+export function statementNumber(accountId: string, periodFrom: string): string {
+  const d = new Date(periodFrom);
+  const ym = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `SPR-${accountId.toUpperCase()}-${ym}`;
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * One month, split the way the customer's own finance team needs to see it. Refuses rather than
+ * quietly dropping an order whose cost centre was never set, because a missing line is the thing
+ * that gets an invoice queried.
+ */
+export function statement(
+  account: CorporateAccount,
+  orders: CorporateOrder[],
+  periodFrom: string,
+  periodTo: string,
+): Statement {
+  const mine = orders.filter((o) => o.account_id === account.id);
+  const from = Date.parse(periodFrom);
+  const to = Date.parse(periodTo);
+  if (!(to > from)) throw new CorporateError('The period must end after it starts.');
+
+  const inPeriod = mine.filter((o) => {
+    const t = Date.parse(o.placed_at);
+    return t >= from && t <= to;
+  });
+
+  const known = new Map(account.cost_centres.map((c) => [c.code, c.name]));
+  const orphan = inPeriod.filter((o) => !known.has(o.cost_centre));
+  if (orphan.length) {
+    throw new CorporateError(
+      `${orphan.length} order${orphan.length === 1 ? '' : 's'} have no cost centre on this account ` +
+        `(${orphan.map((o) => o.order_id).join(', ')}). Fix them before invoicing, or the customer will query it.`,
+    );
+  }
+
+  const byCentre = new Map<string, StatementLine>();
+  for (const o of inPeriod) {
+    const line = byCentre.get(o.cost_centre) ?? {
+      cost_centre: o.cost_centre,
+      cost_centre_name: known.get(o.cost_centre) as string,
+      orders: 0,
+      total: 0,
+    };
+    line.orders += 1;
+    line.total += o.amount;
+    byCentre.set(o.cost_centre, line);
+  }
+
+  const lines = [...byCentre.values()].sort((a, b) => b.total - a.total);
+  const total = lines.reduce((a, l) => a + l.total, 0);
+
+  return {
+    account: account.id,
+    company: account.company,
+    number: statementNumber(account.id, periodFrom),
+    period_from: periodFrom.slice(0, 10),
+    period_to: periodTo.slice(0, 10),
+    due_date: addDays(periodTo, account.payment_terms_days),
+    lines,
+    orders: inPeriod.sort((a, b) => a.placed_at.localeCompare(b.placed_at)),
+    total,
+    all_inclusive: true,
+    note: 'Every amount already includes VAT and the fuel surcharge. Nothing is added on top.',
+  };
+}
+
+/** What the account owes right now, for the limit check on the next order. */
+export function outstanding(orders: CorporateOrder[], accountId: string, paidUpTo?: string): number {
+  const cutoff = paidUpTo ? Date.parse(paidUpTo) : -Infinity;
+  return orders
+    .filter((o) => o.account_id === accountId && Date.parse(o.placed_at) > cutoff)
+    .reduce((a, o) => a + o.amount, 0);
+}
+
+/** The one line an account manager needs to see on a list of accounts. */
+export function health(account: CorporateAccount, owed: number): string {
+  if (!account.active) return `${account.company}: on hold`;
+  if (account.credit_limit <= 0) return `${account.company}: no limit agreed`;
+  const pct = Math.round((owed / account.credit_limit) * 100);
+  if (pct >= 90) return `${account.company}: ${pct} percent of limit used, nearly blocked`;
+  if (pct >= 70) return `${account.company}: ${pct} percent of limit used`;
+  return `${account.company}: ${pula(owed)} owed of ${pula(account.credit_limit)}`;
+}

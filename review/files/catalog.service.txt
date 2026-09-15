@@ -1,0 +1,40 @@
+import { Injectable } from '@nestjs/common';
+import { MerchantsRepo } from '../data-store/repositories/merchants.repo';
+import { groupByVertical } from './verticals';
+
+@Injectable()
+export class CatalogService {
+  constructor(private readonly merchantsRepo: MerchantsRepo) {}
+
+  getCatalog() {
+    const merchants = this.merchantsRepo.listAll().map((m) => ({
+      id: m.id,
+      name: m.name,
+      type: m.type,
+      age_restricted: m.age_restricted,
+      heroImage: m.heroImage,
+      rating: m.rating,
+      ratingCount: m.ratingCount,
+      etaMinLow: m.etaMinLow,
+      etaMinHigh: m.etaMinHigh,
+      deliveryFee: m.deliveryFee,
+      promo: m.promo,
+      status: m.status,
+      items: m.items.map((i) => ({
+        id: i.id,
+        name: i.name,
+        price_bwp: i.price_bwp,
+        photo: i.photo,
+        description: i.description,
+      })),
+    }));
+
+    /* One app, many kinds of shop. `merchants` stays exactly as it was so nothing
+       already reading this endpoint breaks; `sections` is the Sixty60 view the home
+       page draws. `blocked` is deliberately returned rather than hidden: a vertical
+       that law keeps off the page should be visible to whoever is running the
+       business, just never to the customer. */
+    const { sections, unplaced, blocked } = groupByVertical(merchants);
+    return { merchants, sections, unplaced, blocked };
+  }
+}

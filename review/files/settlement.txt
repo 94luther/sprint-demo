@@ -1,0 +1,256 @@
+/**
+ * Brick 19. Merchants paid the same day.
+ *
+ * Both council seats said settlement speed is existential: a merchant paid tomorrow leaves for a
+ * platform that pays today. They also said it is impossible without brick 15, the fault model,
+ * because the moment money moves on its own somebody must already have decided who carries a loss.
+ *
+ * So this file turns the fault on each order into arithmetic. At the end of a day every completed
+ * order has a fault of merchant, customer, sprint, rider or none already attached by the person who
+ * was there, and the payout file falls out of that without anybody reading an order history.
+ *
+ * **Status: the RULES here are brick 15's, which Barbara has not agreed yet.** The mechanism is
+ * real and tested; the percentages and the deduction rules are the proposal in docs/FAULT_MODEL.md.
+ * Nothing may actually pay a merchant until she signs it, and `readyToPay()` refuses while the model
+ * is unagreed rather than quietly running on a draft.
+ *
+ * **One thing the council did not know.** MyZaka has no automatic settlement to a bank account at
+ * all. Their own contract has the merchant emptying an electronic wallet by hand. So on that rail a
+ * same day payout has to be funded from Sprint's own account and reconciled afterwards, and this
+ * file marks those lines rather than pretending the money moved.
+ */
+
+import { Fault } from './state_machine';
+
+/** Money is in thebe throughout. A decimal is how money quietly disappears. */
+import { commissionOn, type MerchantTerms } from './commission';
+
+export type Rail = 'cash' | 'orange_money' | 'myzaka' | 'smega' | 'card' | 'account';
+
+/**
+ * Three different things, and conflating them would mislead finance badly.
+ *   SELF_SETTLING: the rail moves money to the merchant itself. Nothing to fund.
+ *   IN_HAND: the rider physically collected it, so Sprint holds the notes and simply transfers them.
+ *   WALLET: the money sits in an electronic wallet that somebody at Sprint must empty by hand, per
+ *           Mascom's own MyZakaPay contract clause 3.3.6. THIS is the one that has to be funded from
+ *           Sprint's own bank account on the day and reconciled afterwards.
+ */
+const SELF_SETTLING: Rail[] = ['card', 'account'];
+const IN_HAND: Rail[] = ['cash'];
+const WALLET: Rail[] = ['orange_money', 'myzaka', 'smega'];
+
+export interface SettleableOrder {
+  order_id: string;
+  merchant_id: string;
+  merchant_name: string;
+  /** What the customer paid for the goods, in thebe. Excludes the delivery fee. */
+  goods: number;
+  /** The delivery fee, which is Sprint's, not the merchant's. */
+  delivery_fee: number;
+  rail: Rail;
+  /** 'none' when it completed normally. Anything else means something went wrong. */
+  fault: Fault;
+  /** Did the goods actually reach the customer. */
+  delivered: boolean;
+  /** Perishable or dispensed goods cannot go back on a shelf. */
+  perishable: boolean;
+}
+
+export interface PayoutLine {
+  merchant_id: string;
+  merchant_name: string;
+  orders: number;
+  /** What the merchant is owed for goods that reached a customer. */
+  goods: number;
+  /** Deducted because the merchant caused a failure. Never a penalty, only real cost. */
+  deductions: number;
+  /** Paid to the merchant for goods that came back but cannot be resold. */
+  perishable_loss: number;
+  net: number;
+  rail: Rail;
+  /** True when Sprint must fund this from its own account because the rail does not settle itself. */
+  funded_by_sprint: boolean;
+  says: string;
+}
+
+export interface Payout {
+  day: string;
+  lines: PayoutLine[];
+  total: number;
+  funded_by_sprint: number;
+  /** Sprint's own take for the day: delivery fees earned, less what it carried for its own failures. */
+  sprint_delivery_fees: number;
+  sprint_absorbed: number;
+  agreed: boolean;
+  says: string;
+}
+
+export class SettlementError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SettlementError';
+  }
+}
+
+export function pula(thebe: number): string {
+  return `P${(thebe / 100).toFixed(2)}`;
+}
+
+/**
+ * What one order settles to. The fault decides it, exactly as the table in docs/FAULT_MODEL.md says.
+ */
+export function settleOne(o: SettleableOrder, terms: MerchantTerms | null = null): {
+  merchant: number;
+  perishable_loss: number;
+  sprint_fee: number;
+  sprint_absorbs: number;
+  /** Sprint's share of the GOODS. Zero unless the merchant's rate is agreed. */
+  commission: number;
+  says: string;
+} {
+  if (o.goods < 0 || o.delivery_fee < 0) throw new SettlementError('An order cannot have a negative amount on it.');
+
+  if (o.delivered) {
+    // It arrived. The merchant is paid for the goods and Sprint keeps the delivery fee, whatever
+    // went wrong on the way, because the customer got what they ordered.
+    /* Commission is earned only on a delivery that happened, and only on the
+       goods. An unagreed rate earns zero, so a rate typed in during a negotiation
+       cannot start taking money from a merchant because somebody forgot it was
+       still a proposal. See commission.ts. */
+    const cut = commissionOn(o.goods, terms);
+    return {
+      merchant: o.goods - cut.thebe,
+      perishable_loss: 0,
+      sprint_fee: o.delivery_fee,
+      sprint_absorbs: 0,
+      commission: cut.thebe,
+      says: cut.earned ? `Delivered. ${cut.says}` : 'Delivered, paid in full',
+    };
+  }
+
+  switch (o.fault) {
+    case 'merchant':
+      // The shop could not supply. They are paid nothing and carry any perishable loss themselves.
+      return { merchant: 0, perishable_loss: 0, sprint_fee: 0, sprint_absorbs: 0, commission: 0, says: 'The shop could not supply it, nothing is owed' };
+
+    case 'customer':
+      // Wrong address, nobody home, failed identity check. The customer keeps paying the delivery
+      // fee, and a perishable that cannot be resold is the merchant's real loss, so it is paid.
+      return {
+        merchant: 0,
+        perishable_loss: o.perishable ? o.goods : 0,
+        sprint_fee: o.delivery_fee,
+        sprint_absorbs: 0,
+        commission: 0,   // nothing was delivered, so nothing is earned on the basket
+        says: o.perishable
+          ? 'The customer caused it and the goods cannot be resold, so the shop is covered'
+          : 'The customer caused it, the goods go back, the delivery fee stands',
+      };
+
+    case 'rider':
+    case 'sprint':
+      // Sprint could not do what it sold. The customer is refunded, the merchant is covered for
+      // anything that cannot be resold, and Sprint carries it.
+      return {
+        merchant: 0,
+        perishable_loss: o.perishable ? o.goods : 0,
+        sprint_fee: 0,
+        sprint_absorbs: (o.perishable ? o.goods : 0) + o.delivery_fee,
+        commission: 0,   // nothing was delivered, so nothing is earned on the basket
+        says: 'Sprint could not deliver it, so Sprint carries the cost',
+      };
+
+    case 'none':
+    default:
+      // Nobody is at fault. Flood, accident, roadblock. Nobody profits and nobody is punished.
+      return {
+        merchant: 0,
+        perishable_loss: o.perishable ? o.goods : 0,
+        sprint_fee: 0,
+        sprint_absorbs: o.perishable ? o.goods : 0,
+        commission: 0,   // nothing was delivered, so nothing is earned on the basket
+        says: 'Nobody was at fault, the goods that cannot be resold are covered',
+      };
+  }
+}
+
+/**
+ * The day's payout, grouped by merchant. `agreed` is whether Barbara has signed the fault model;
+ * false produces the file but marks it not payable, so nobody pays out on a draft by accident.
+ */
+export function dayPayout(day: string, orders: SettleableOrder[], agreed: boolean): Payout {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new SettlementError('A payout needs a day, as 2026-09-13.');
+
+  const byMerchant = new Map<string, PayoutLine>();
+  let fees = 0, absorbed = 0;
+
+  for (const o of orders) {
+    const s = settleOne(o);
+    fees += s.sprint_fee;
+    absorbed += s.sprint_absorbs;
+
+    const line = byMerchant.get(o.merchant_id) ?? {
+      merchant_id: o.merchant_id,
+      merchant_name: o.merchant_name,
+      orders: 0, goods: 0, deductions: 0, perishable_loss: 0, net: 0,
+      rail: o.rail,
+      funded_by_sprint: WALLET.includes(o.rail),
+      says: '',
+    };
+    line.orders += 1;
+    line.goods += s.merchant;
+    line.perishable_loss += s.perishable_loss;
+    if (!o.delivered && o.fault === 'merchant') line.deductions += 0; // nothing owed, nothing deducted
+    byMerchant.set(o.merchant_id, line);
+  }
+
+  const lines = [...byMerchant.values()].map((l) => {
+    l.net = l.goods + l.perishable_loss - l.deductions;
+    l.says = l.funded_by_sprint
+      ? `${pula(l.net)} to ${l.merchant_name}, funded from Sprint's own account because ${railName(l.rail)} leaves the money in a wallet somebody must empty by hand`
+      : IN_HAND.includes(l.rail)
+        ? `${pula(l.net)} to ${l.merchant_name}, out of the cash the rider already collected`
+        : `${pula(l.net)} to ${l.merchant_name} on ${railName(l.rail)}`;
+    return l;
+  }).sort((a, b) => b.net - a.net);
+
+  const total = lines.reduce((a, l) => a + l.net, 0);
+  const funded = lines.filter((l) => l.funded_by_sprint).reduce((a, l) => a + l.net, 0);
+
+  return {
+    day, lines, total,
+    funded_by_sprint: funded,
+    sprint_delivery_fees: fees,
+    sprint_absorbed: absorbed,
+    agreed,
+    says: agreed
+      ? `${pula(total)} to ${lines.length} merchant${lines.length === 1 ? '' : 's'} for ${day}`
+      : `${pula(total)} worked out for ${day}, NOT PAYABLE until the fault model is agreed`,
+  };
+}
+
+function railName(r: Rail): string {
+  return { cash: 'cash', orange_money: 'Orange Money', myzaka: 'MyZaka', smega: 'Smega', card: 'card', account: 'account' }[r];
+}
+
+/** The gate. Nothing pays a merchant while the rules behind it are still a proposal. */
+export function readyToPay(p: Payout): { ready: boolean; says: string } {
+  if (!p.agreed) {
+    return { ready: false, says: 'The fault model is still a proposal, so nothing can be paid out yet. Barbara has it.' };
+  }
+  if (p.total < 0) {
+    return { ready: false, says: 'The day works out to less than nothing, which means something is wrong. A person must look.' };
+  }
+  return { ready: true, says: p.says };
+}
+
+/** The file finance actually opens. Plain CSV, because that is what a bank upload takes. */
+export function payoutCsv(p: Payout): string {
+  const head = 'day,merchant_id,merchant_name,orders,goods_pula,perishable_pula,net_pula,rail,funded_by_sprint';
+  const rows = p.lines.map((l) =>
+    [p.day, l.merchant_id, `"${l.merchant_name.replace(/"/g, '""')}"`, l.orders,
+     (l.goods / 100).toFixed(2), (l.perishable_loss / 100).toFixed(2), (l.net / 100).toFixed(2),
+     l.rail, l.funded_by_sprint ? 'yes' : 'no'].join(','));
+  const foot = `${p.day},TOTAL,"",${p.lines.reduce((a, l) => a + l.orders, 0)},,,${(p.total / 100).toFixed(2)},,`;
+  return [head, ...rows, foot].join('\n') + '\n';
+}

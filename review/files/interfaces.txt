@@ -1,0 +1,133 @@
+import { MerchantType, OrderStatus, PaymentMethod, Role } from '../common/types';
+
+export interface UserRecord {
+  id: string;
+  name: string;
+  role: Role;
+  phone_hash: string; // sha256 blind index, used to find the user at login
+  phone_enc: string; // AES-256-GCM ciphertext, the demo talking point
+  pin_hash: string; // argon2id hash
+  courier_id?: string; // set when role is 'courier', links to CourierRecord
+}
+
+export interface MerchantItemRecord {
+  id: string;
+  name: string;
+  price_bwp: number;
+  photo: string; // /food/<name>.jpg, served from web/public/food
+  description: string;
+}
+
+export interface MerchantRecord {
+  id: string;
+  name: string;
+  type: MerchantType;
+  age_restricted: boolean;
+  items: MerchantItemRecord[];
+  lat: number; // pickup point, internal only, not part of the /catalog contract
+  lng: number;
+  heroImage: string; // /food/<name>.jpg, served from web/public/food
+  rating: number;
+  ratingCount: number;
+  etaMinLow: number;
+  etaMinHigh: number;
+  deliveryFee: number; // pula, flat per-merchant demo figure
+  promo: string | null;
+  status: 'open' | 'busy' | 'closed'; // live availability shown on cards and hero
+}
+
+export interface CourierRecord {
+  id: string;
+  name: string;
+  status: 'online' | 'offered' | 'busy' | 'offline';
+  lat: number;
+  lng: number;
+  rating: number;
+  earnings_today_bwp: number;
+  waypoint_target: number; // index into WAYPOINTS, used while wandering idle
+  move_target?: { lat: number; lng: number } | null; // used while on an order
+}
+
+export interface OrderItemRecord {
+  item_id: string;
+  name: string;
+  qty: number;
+  price_bwp: number;
+}
+
+export interface TimelineEntry {
+  status: OrderStatus;
+  at: string;
+}
+
+export interface OrderRecord {
+  id: string;
+  customer_id: string;
+  merchant_id: string;
+  items: OrderItemRecord[];
+  total_bwp: number;
+  payment_method: PaymentMethod;
+  address_enc: string; // AES-256-GCM ciphertext
+  delivery_lat: number;
+  delivery_lng: number;
+  age_confirmed: boolean;
+  status: OrderStatus;
+  timeline: TimelineEntry[];
+  courier_id: string | null;
+  eta_min: number | null;
+  idempotency_key: string;
+  created_at: string;
+  next_step_at: number; // epoch ms, when the simulator should advance this order
+}
+
+export interface DispatchScoreComponent {
+  eta_min: number;
+  active_load: number;
+  rating_gap: number;
+  fairness_boost: number;
+}
+
+export interface DispatchScore {
+  courier_id: string;
+  courier_name: string;
+  score: number;
+  components: DispatchScoreComponent;
+}
+
+export interface LastDispatch {
+  order_id: string;
+  scores: DispatchScore[];
+}
+
+export interface LedgerEntryRecord {
+  id: string;
+  order_id: string;
+  account: string;
+  type: 'debit' | 'credit';
+  amount_bwp: number;
+  created_at: string;
+}
+
+export interface OutboxEventRecord {
+  id: string;
+  event: string;
+  order_id: string;
+  payload: unknown;
+  at: string;
+}
+
+export interface IdempotencyRecord {
+  key: string; // `${user_id}:${idempotency_key}`
+  order_id: string;
+}
+
+export interface StoreShape {
+  users: UserRecord[];
+  merchants: MerchantRecord[];
+  couriers: CourierRecord[];
+  orders: OrderRecord[];
+  ledger_entries: LedgerEntryRecord[];
+  events_outbox: OutboxEventRecord[];
+  idempotency: IdempotencyRecord[];
+  last_dispatch: LastDispatch | null;
+}

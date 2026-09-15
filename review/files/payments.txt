@@ -1,0 +1,357 @@
+/**
+ * Payments: taking the money, and never taking it twice.
+ *
+ * Phase 2 of the plan Luther approved on 15 September 2026. What is deliberately
+ * NOT here: a working connection to Orange Money. That needs merchant credentials
+ * and a merchant rate, and the emails asking all three networks for both are
+ * queued for Monday morning. Writing a connector that pretends to succeed without
+ * them would be the worst thing in this file, so the adapter REFUSES instead: an
+ * unconfigured rail throws, loudly, by name. A payment system that silently does
+ * nothing is how money goes missing.
+ *
+ * What IS here, and is real and tested:
+ *
+ *   - Idempotency. A customer with a bad signal taps Pay three times. Three taps,
+ *     one charge. This is the single most expensive bug in any payment system and
+ *     it is solved by the key, not by hoping the button disables in time.
+ *   - A state machine that cannot go backwards. Captured money cannot become
+ *     pending again; a failed payment cannot be captured; a refund cannot exceed
+ *     what was taken.
+ *   - The cost of each rail, so the merchant's net is computed from what actually
+ *     arrives rather than from what the customer typed. Settlement already exists
+ *     in settlement.ts and consumes this.
+ *   - Which rails can refund at all. Cash cannot be refunded through a phone, and
+ *     pretending otherwise puts a rider at somebody's door with an argument.
+ *
+ * Money is in thebe, as whole integers, exactly as cash.ts has it. Never floats.
+ * Two pula is 200, and 0.1 + 0.2 is a bug waiting in a currency you can spend.
+ */
+
+import type { Rail } from './settlement';
+
+export const THEBE = 100;
+
+export class PaymentError extends Error {}
+
+/** A rail cannot be used until this is false. */
+export interface RailSpec {
+  label: string;
+  /** the customer does something on their own phone before it completes */
+  needsCustomerAction: boolean;
+  /** money can be sent back down this rail by software */
+  refundable: boolean;
+  /** what the rail takes, in basis points of the amount (100 bp = 1 percent) */
+  costBp: number;
+  /** a flat charge per transaction, in thebe, on top of costBp */
+  costFlatThebe: number;
+  /** below this the rail is not worth offering */
+  minThebe: number;
+  /** above this the rail refuses or the risk is not ours to take */
+  maxThebe: number;
+  /**
+   * The named thing that must exist before this rail may be switched on. Null
+   * means it works today. Every non-null value here is somebody's reply, not a
+   * piece of code.
+   */
+  blockedBy: string | null;
+}
+
+/**
+ * The costs below are PLACEHOLDERS and are marked as such by blockedBy. Not one
+ * of them is a rate anybody has quoted Sprint. They exist so the maths can be
+ * tested; they must be replaced with the real merchant rate the day it arrives,
+ * and the test named 'no rail claims a real rate' fails if that is forgotten.
+ */
+export const RAILS: Record<Rail, RailSpec> = {
+  cash: {
+    label: 'Cash at the door',
+    needsCustomerAction: false,
+    refundable: false, // a rider cannot un-take cash; this goes through settlement
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 0,
+    maxThebe: 100000, // P1000, the cap cash.ts already enforces
+    blockedBy: null,
+  },
+  orange_money: {
+    label: 'Orange Money',
+    needsCustomerAction: true, // the customer approves on their handset
+    refundable: true,
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 100,
+    maxThebe: 500000,
+    blockedBy: 'Orange Money merchant credentials and rate (email queued Monday 10:05)',
+  },
+  myzaka: {
+    label: 'MyZaka',
+    needsCustomerAction: true,
+    refundable: true,
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 100,
+    maxThebe: 500000,
+    blockedBy: 'Mascom MyZaka merchant credentials and rate (email queued Monday 10:35)',
+  },
+  smega: {
+    label: 'Smega',
+    needsCustomerAction: true,
+    refundable: true,
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 100,
+    maxThebe: 500000,
+    blockedBy: 'BTC Smega merchant credentials and rate (email queued Monday 11:05)',
+  },
+  card: {
+    label: 'Card',
+    needsCustomerAction: true,
+    refundable: true,
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 100,
+    maxThebe: 2000000,
+    blockedBy: 'A card gateway chosen and signed: DPO or Tingg',
+  },
+  account: {
+    label: 'On account',
+    needsCustomerAction: false,
+    refundable: true,
+    costBp: 0,
+    costFlatThebe: 0,
+    minThebe: 0,
+    maxThebe: 10000000,
+    blockedBy: null, // corporate.ts already governs who may do this
+  },
+};
+
+export function railsAvailableToday(): Rail[] {
+  return (Object.keys(RAILS) as Rail[]).filter((r) => RAILS[r].blockedBy === null);
+}
+
+export function railsWaitingOnSomebody(): { rail: Rail; blockedBy: string }[] {
+  return (Object.keys(RAILS) as Rail[])
+    .filter((r) => RAILS[r].blockedBy !== null)
+    .map((r) => ({ rail: r, blockedBy: RAILS[r].blockedBy as string }));
+}
+
+/** What the rail takes off the top, in thebe, rounded to a whole thebe. */
+export function railCost(rail: Rail, amountThebe: number): number {
+  const spec = RAILS[rail];
+  if (amountThebe < 0) throw new PaymentError('An amount cannot be negative.');
+  return Math.round((amountThebe * spec.costBp) / 10000) + spec.costFlatThebe;
+}
+
+/** What actually lands, after the rail has taken its cut. */
+export function netOf(rail: Rail, amountThebe: number): number {
+  return amountThebe - railCost(rail, amountThebe);
+}
+
+export function pula(thebe: number): string {
+  const sign = thebe < 0 ? '-' : '';
+  const n = Math.abs(thebe);
+  return sign + 'P' + Math.floor(n / THEBE) + '.' + String(n % THEBE).padStart(2, '0');
+}
+
+/* ------------------------------------------------------------------ the states */
+
+export type PaymentState =
+  | 'created'
+  | 'awaiting_customer'
+  | 'captured'
+  | 'failed'
+  | 'cancelled'
+  | 'refunded';
+
+const MOVES: Record<PaymentState, PaymentState[]> = {
+  created: ['awaiting_customer', 'captured', 'failed', 'cancelled'],
+  awaiting_customer: ['captured', 'failed', 'cancelled'],
+  captured: ['refunded'],
+  failed: [],
+  cancelled: [],
+  refunded: [],
+};
+
+export function canMove(from: PaymentState, to: PaymentState): boolean {
+  return MOVES[from].includes(to);
+}
+
+export function isFinal(s: PaymentState): boolean {
+  return MOVES[s].length === 0;
+}
+
+export interface Payment {
+  /** the idempotency key: the same key is always the same payment */
+  key: string;
+  order_id: string;
+  rail: Rail;
+  amount_thebe: number;
+  state: PaymentState;
+  /** what the rail took, known only once captured */
+  cost_thebe: number;
+  refunded_thebe: number;
+  /** set when the rail names its own reference, so a dispute can be traced */
+  rail_ref: string | null;
+  says: string;
+}
+
+/* ------------------------------------------------------- taking the money once */
+
+export interface TakeRequest {
+  key: string;
+  order_id: string;
+  rail: Rail;
+  amount_thebe: number;
+}
+
+/**
+ * The book of payments. Deliberately an interface: the real one is Postgres, the
+ * one in the tests is a Map, and neither the state machine nor the idempotency
+ * rule should care which it is.
+ */
+export interface PaymentBook {
+  get(key: string): Payment | undefined;
+  put(p: Payment): void;
+}
+
+export class MemoryBook implements PaymentBook {
+  private readonly m = new Map<string, Payment>();
+  get(key: string) {
+    return this.m.get(key);
+  }
+  put(p: Payment) {
+    this.m.set(p.key, p);
+  }
+  all(): Payment[] {
+    return [...this.m.values()];
+  }
+}
+
+/**
+ * Start a payment, or hand back the one this key already started.
+ *
+ * The rule that matters: the SAME key with DIFFERENT details is a bug in the
+ * caller, not a second payment, and it throws rather than quietly charging
+ * again. A retried tap sends identical details and gets the identical payment
+ * back, which is the whole point.
+ */
+export function take(book: PaymentBook, req: TakeRequest): Payment {
+  if (!req.key) throw new PaymentError('A payment needs an idempotency key.');
+  if (!Number.isInteger(req.amount_thebe)) {
+    throw new PaymentError('Money is whole thebe. ' + req.amount_thebe + ' is not.');
+  }
+  if (req.amount_thebe <= 0) throw new PaymentError('An amount must be more than nothing.');
+
+  const existing = book.get(req.key);
+  if (existing) {
+    if (
+      existing.order_id !== req.order_id ||
+      existing.rail !== req.rail ||
+      existing.amount_thebe !== req.amount_thebe
+    ) {
+      throw new PaymentError(
+        'This key has already been used for a different payment. Refusing to charge again.',
+      );
+    }
+    return existing; // the retried tap
+  }
+
+  const spec = RAILS[req.rail];
+  if (spec.blockedBy) {
+    throw new PaymentError(spec.label + ' is not switched on yet: ' + spec.blockedBy);
+  }
+  if (req.amount_thebe < spec.minThebe) {
+    throw new PaymentError(spec.label + ' does not take amounts under ' + pula(spec.minThebe) + '.');
+  }
+  if (req.amount_thebe > spec.maxThebe) {
+    throw new PaymentError(spec.label + ' does not take amounts over ' + pula(spec.maxThebe) + '.');
+  }
+
+  const p: Payment = {
+    key: req.key,
+    order_id: req.order_id,
+    rail: req.rail,
+    amount_thebe: req.amount_thebe,
+    state: spec.needsCustomerAction ? 'awaiting_customer' : 'created',
+    cost_thebe: 0,
+    refunded_thebe: 0,
+    rail_ref: null,
+    says: spec.needsCustomerAction
+      ? 'Approve ' + pula(req.amount_thebe) + ' on your phone.'
+      : pula(req.amount_thebe) + ' due at the door.',
+  };
+  book.put(p);
+  return p;
+}
+
+export function move(
+  book: PaymentBook,
+  key: string,
+  to: PaymentState,
+  railRef?: string,
+): Payment {
+  const p = book.get(key);
+  if (!p) throw new PaymentError('No payment with that key.');
+  if (!canMove(p.state, to)) {
+    throw new PaymentError('A payment cannot go from ' + p.state + ' to ' + to + '.');
+  }
+  p.state = to;
+  if (railRef) p.rail_ref = railRef;
+  if (to === 'captured') {
+    p.cost_thebe = railCost(p.rail, p.amount_thebe);
+    p.says = pula(p.amount_thebe) + ' received.';
+  }
+  if (to === 'failed') p.says = 'That payment did not go through. Nothing was taken.';
+  if (to === 'cancelled') p.says = 'Payment cancelled. Nothing was taken.';
+  book.put(p);
+  return p;
+}
+
+export function refund(book: PaymentBook, key: string, amountThebe: number): Payment {
+  const p = book.get(key);
+  if (!p) throw new PaymentError('No payment with that key.');
+  if (p.state !== 'captured') throw new PaymentError('Only money actually taken can be sent back.');
+  if (!RAILS[p.rail].refundable) {
+    throw new PaymentError(
+      RAILS[p.rail].label + ' cannot be refunded by software. This one goes through settlement.',
+    );
+  }
+  if (!Number.isInteger(amountThebe) || amountThebe <= 0) {
+    throw new PaymentError('A refund must be a whole amount of thebe, more than nothing.');
+  }
+  if (p.refunded_thebe + amountThebe > p.amount_thebe) {
+    throw new PaymentError('That is more than was taken.');
+  }
+  p.refunded_thebe += amountThebe;
+  if (p.refunded_thebe === p.amount_thebe) p.state = 'refunded';
+  p.says = pula(p.refunded_thebe) + ' sent back.';
+  book.put(p);
+  return p;
+}
+
+/* ------------------------------------------------- the rail itself, unconfigured */
+
+export interface RailAdapter {
+  rail: Rail;
+  charge(p: Payment): Promise<{ ok: boolean; ref?: string; says: string }>;
+}
+
+/**
+ * The Orange Money connector, deliberately inert.
+ *
+ * Orange holds over seven in ten of Botswana's mobile money and publishes a real
+ * web payment API, so this is the rail that matters. It cannot be written blind:
+ * it needs a merchant id, a secret and the notification URL Orange calls back on.
+ * Until those exist this throws by name rather than returning a cheerful false
+ * success, because a payment layer that appears to work and takes nothing is
+ * worse than one that plainly refuses.
+ */
+export class UnconfiguredRail implements RailAdapter {
+  constructor(public readonly rail: Rail) {}
+  async charge(): Promise<{ ok: boolean; says: string }> {
+    const spec = RAILS[this.rail];
+    throw new PaymentError(
+      spec.label + ' has no credentials on this machine. Waiting on: ' + (spec.blockedBy ?? 'nothing'),
+    );
+  }
+}
