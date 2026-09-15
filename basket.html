@@ -619,7 +619,7 @@
         /* What you could hand the rider is asked of the cash engine, not listed here.
            A hardcoded P100, P200, P150 could not cover a cordless drill, which is
            exactly the dead end a copy of the truth always ends in. */
-        ((E && E.cash) ? E.cash.payableWith(total()).slice(0, 3) : [10000,20000,15000]).map(function(v){
+        ((E && E.cash) ? E.cash.tendersFor(total()) : [10000,20000,15000]).map(function(v){
           return '<span' + (pay.tender === v ? ' class="on"' : '') + ' data-v="' + v + '">' + P(v) + '</span>';
         }).join('') + '</div>';
       if (pay.tender !== null){

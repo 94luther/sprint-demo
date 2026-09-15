@@ -599,13 +599,17 @@
     NOTES: () => NOTES,
     THEBE: () => THEBE2,
     WRITE_OFF_THEBE: () => WRITE_OFF_THEBE,
+    canBeHandedOver: () => canBeHandedOver,
     cashAllowed: () => cashAllowed,
     changeFor: () => changeFor,
     floatFor: () => floatFor,
     needsCashPhoto: () => needsCashPhoto,
+    notesFor: () => notesFor,
     payableWith: () => payableWith,
     pula: () => pula3,
-    reconcile: () => reconcile
+    reconcile: () => reconcile,
+    saysNotes: () => saysNotes,
+    tendersFor: () => tendersFor
   });
   function pula3(thebe) {
     return `P${(thebe / THEBE2).toFixed(2)}`;
@@ -629,22 +633,70 @@
     const fits = NOTES.filter((n) => n >= totalThebe);
     return fits.length ? Math.min(...fits) : Math.max(...NOTES);
   }
+  function notesFor(amountThebe) {
+    if (!Number.isInteger(amountThebe) || amountThebe < 0) return null;
+    if (amountThebe === 0) return [];
+    const smallest = Math.min(...NOTES);
+    if (amountThebe % smallest !== 0) return null;
+    const out = [];
+    let left = amountThebe;
+    for (const n of [...NOTES].sort((a, b) => b - a)) {
+      while (left >= n) {
+        out.push(n);
+        left -= n;
+      }
+    }
+    return left === 0 ? out : null;
+  }
+  function canBeHandedOver(amountThebe) {
+    return notesFor(amountThebe) !== null;
+  }
+  function saysNotes(amountThebe) {
+    var _a;
+    const ns = notesFor(amountThebe);
+    if (!ns || ns.length === 0) return "nothing";
+    const counted = /* @__PURE__ */ new Map();
+    for (const n of ns) counted.set(n, ((_a = counted.get(n)) != null ? _a : 0) + 1);
+    const parts = [...counted.entries()].map(
+      ([note, times]) => times === 1 ? "a " + pula3(note) : times + " x " + pula3(note)
+    );
+    if (parts.length === 1) return parts[0];
+    return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+  }
+  function tendersFor(totalThebe) {
+    const check = cashAllowed(totalThebe);
+    if (!check.allowed) return [];
+    const smallest = Math.min(...NOTES);
+    const least = Math.ceil(totalThebe / smallest) * smallest;
+    const out = /* @__PURE__ */ new Set();
+    if (canBeHandedOver(least)) out.add(least);
+    for (const step of [5e3, 1e4, 2e4]) {
+      const rounded = Math.ceil(totalThebe / step) * step;
+      if (rounded !== least && canBeHandedOver(rounded) && rounded <= CASH_CAP_THEBE) {
+        out.add(rounded);
+      }
+    }
+    return [...out].sort((a, b) => a - b).slice(0, 3);
+  }
   function changeFor(totalThebe, payingWithThebe) {
     const check = cashAllowed(totalThebe);
     if (!check.allowed) throw new CashError(check.says);
-    if (!NOTES.includes(payingWithThebe)) {
-      throw new CashError(`${pula3(payingWithThebe)} is not a note. Choose one the customer will actually hand over.`);
+    if (!canBeHandedOver(payingWithThebe)) {
+      throw new CashError(
+        `${pula3(payingWithThebe)} is not an amount anyone can hand over. The smallest note is ${pula3(Math.min(...NOTES))}.`
+      );
     }
     if (payingWithThebe < totalThebe) {
       throw new CashError(
-        `${pula3(payingWithThebe)} does not cover ${pula3(totalThebe)}. Choose a bigger note.`
+        `${pula3(payingWithThebe)} does not cover ${pula3(totalThebe)}. Hand over more.`
       );
     }
     const change = payingWithThebe - totalThebe;
     return {
       change,
       riderNeeds: change,
-      says: change === 0 ? "No change needed, the customer has it exactly" : `Your rider will bring ${pula3(change)} change`
+      says: change === 0 ? "No change needed, the customer has it exactly" : `Your rider will bring ${pula3(change)} change`,
+      handingOver: saysNotes(payingWithThebe)
     };
   }
   function floatFor(orders) {
