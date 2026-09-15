@@ -64,6 +64,8 @@ export interface PayoutLine {
   goods: number;
   /** Deducted because the merchant caused a failure. Never a penalty, only real cost. */
   deductions: number;
+  /** Sprint's agreed share of the goods, already taken out of `goods`. */
+  commission: number;
   /** Paid to the merchant for goods that came back but cannot be resold. */
   perishable_loss: number;
   net: number;
@@ -80,6 +82,8 @@ export interface Payout {
   funded_by_sprint: number;
   /** Sprint's own take for the day: delivery fees earned, less what it carried for its own failures. */
   sprint_delivery_fees: number;
+  /** Sprint's commission on the goods for the day. Zero unless terms were agreed. */
+  sprint_commission: number;
   sprint_absorbed: number;
   agreed: boolean;
   says: string;
@@ -178,21 +182,30 @@ export function settleOne(o: SettleableOrder, terms: MerchantTerms | null = null
  * The day's payout, grouped by merchant. `agreed` is whether Barbara has signed the fault model;
  * false produces the file but marks it not payable, so nobody pays out on a draft by accident.
  */
-export function dayPayout(day: string, orders: SettleableOrder[], agreed: boolean): Payout {
+export function dayPayout(
+  day: string,
+  orders: SettleableOrder[],
+  agreed: boolean,
+  /* Found by Codex on 16 Sep 2026: this used to call settleOne without terms, so
+     an agreed commission was computed perfectly by commission.ts and then dropped
+     on the floor here. A P200 basket at 15 percent paid the merchant P200. */
+  terms: ((merchantId: string) => MerchantTerms | null) | null = null,
+): Payout {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new SettlementError('A payout needs a day, as 2026-09-13.');
 
   const byMerchant = new Map<string, PayoutLine>();
-  let fees = 0, absorbed = 0;
+  let fees = 0, absorbed = 0, commission = 0;
 
   for (const o of orders) {
-    const s = settleOne(o);
+    const s = settleOne(o, terms ? terms(o.merchant_id) : null);
     fees += s.sprint_fee;
     absorbed += s.sprint_absorbs;
+    commission += s.commission;
 
     const line = byMerchant.get(o.merchant_id) ?? {
       merchant_id: o.merchant_id,
       merchant_name: o.merchant_name,
-      orders: 0, goods: 0, deductions: 0, perishable_loss: 0, net: 0,
+      orders: 0, goods: 0, deductions: 0, perishable_loss: 0, net: 0, commission: 0,
       rail: o.rail,
       funded_by_sprint: WALLET.includes(o.rail),
       says: '',
@@ -200,6 +213,7 @@ export function dayPayout(day: string, orders: SettleableOrder[], agreed: boolea
     line.orders += 1;
     line.goods += s.merchant;
     line.perishable_loss += s.perishable_loss;
+    line.commission += s.commission;
     if (!o.delivered && o.fault === 'merchant') line.deductions += 0; // nothing owed, nothing deducted
     byMerchant.set(o.merchant_id, line);
   }
@@ -208,6 +222,8 @@ export function dayPayout(day: string, orders: SettleableOrder[], agreed: boolea
     l.net = l.goods + l.perishable_loss - l.deductions;
     l.says = l.funded_by_sprint
       ? `${pula(l.net)} to ${l.merchant_name}, funded from Sprint's own account because ${railName(l.rail)} leaves the money in a wallet somebody must empty by hand`
+      : SELF_SETTLING.includes(l.rail)
+        ? `${pula(l.net)} to ${l.merchant_name}, settled by ${railName(l.rail)} itself, nothing for Sprint to move`
       : IN_HAND.includes(l.rail)
         ? `${pula(l.net)} to ${l.merchant_name}, out of the cash the rider already collected`
         : `${pula(l.net)} to ${l.merchant_name} on ${railName(l.rail)}`;
@@ -221,6 +237,7 @@ export function dayPayout(day: string, orders: SettleableOrder[], agreed: boolea
     day, lines, total,
     funded_by_sprint: funded,
     sprint_delivery_fees: fees,
+    sprint_commission: commission,
     sprint_absorbed: absorbed,
     agreed,
     says: agreed

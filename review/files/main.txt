@@ -27,7 +27,7 @@ async function bootstrap(): Promise<void> {
     httpAdapter.disable('x-powered-by');
   }
 
-  app.use((req: any, res: any, next: any) => {
+  app.use((_req: any, res: any, next: any) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     next();

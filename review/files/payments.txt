@@ -190,6 +190,8 @@ export interface Payment {
   /** what the rail took, known only once captured */
   cost_thebe: number;
   refunded_thebe: number;
+  /** every refund under its own key, so a retried refund is the SAME refund */
+  refunds: Record<string, number>;
   /** set when the rail names its own reference, so a dispute can be traced */
   rail_ref: string | null;
   says: string;
@@ -275,6 +277,7 @@ export function take(book: PaymentBook, req: TakeRequest): Payment {
     state: spec.needsCustomerAction ? 'awaiting_customer' : 'created',
     cost_thebe: 0,
     refunded_thebe: 0,
+    refunds: {},
     rail_ref: null,
     says: spec.needsCustomerAction
       ? 'Approve ' + pula(req.amount_thebe) + ' on your phone.'
@@ -307,9 +310,20 @@ export function move(
   return p;
 }
 
-export function refund(book: PaymentBook, key: string, amountThebe: number): Payment {
+export function refund(book: PaymentBook, key: string, amountThebe: number, refundKey: string): Payment {
   const p = book.get(key);
   if (!p) throw new PaymentError('No payment with that key.');
+  /* Found by Codex on 16 Sep 2026: a refund had no key of its own, so a customer
+     on a bad line who tapped Refund twice got P40 back for a P20 refund. The same
+     rule as taking the money: the same key is the same refund, never a second. */
+  if (!refundKey) throw new PaymentError('A refund needs its own key, so a retried refund is not a second refund.');
+  if (!p.refunds) p.refunds = {};
+  if (refundKey in p.refunds) {
+    if (p.refunds[refundKey] !== amountThebe) {
+      throw new PaymentError('This refund key has already been used for a different amount. Refusing.');
+    }
+    return p; // the retried tap
+  }
   if (p.state !== 'captured') throw new PaymentError('Only money actually taken can be sent back.');
   if (!RAILS[p.rail].refundable) {
     throw new PaymentError(
@@ -322,6 +336,7 @@ export function refund(book: PaymentBook, key: string, amountThebe: number): Pay
   if (p.refunded_thebe + amountThebe > p.amount_thebe) {
     throw new PaymentError('That is more than was taken.');
   }
+  p.refunds[refundKey] = amountThebe;
   p.refunded_thebe += amountThebe;
   if (p.refunded_thebe === p.amount_thebe) p.state = 'refunded';
   p.says = pula(p.refunded_thebe) + ' sent back.';

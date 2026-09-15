@@ -46,6 +46,8 @@ export interface CorporateOrder {
   amount: number;
   placed_at: string;
   description: string;
+  /** A cancelled order must stop eating the limit. Absent means placed. */
+  state?: 'placed' | 'cancelled';
 }
 
 export class CorporateError extends Error {
@@ -185,7 +187,7 @@ export function statement(
 export function outstanding(orders: CorporateOrder[], accountId: string, paidUpTo?: string): number {
   const cutoff = paidUpTo ? Date.parse(paidUpTo) : -Infinity;
   return orders
-    .filter((o) => o.account_id === accountId && Date.parse(o.placed_at) > cutoff)
+    .filter((o) => o.account_id === accountId && o.state !== 'cancelled' && Date.parse(o.placed_at) > cutoff)
     .reduce((a, o) => a + o.amount, 0);
 }
 
@@ -197,4 +199,52 @@ export function health(account: CorporateAccount, owed: number): string {
   if (pct >= 90) return `${account.company}: ${pct} percent of limit used, nearly blocked`;
   if (pct >= 70) return `${account.company}: ${pct} percent of limit used`;
   return `${account.company}: ${pula(owed)} owed of ${pula(account.credit_limit)}`;
+}
+
+/* ---------------------------------------------------------------------------
+   RESERVING THE CREDIT. Found by both reviews on 16 September 2026.
+
+   canOrder was a pure check with no caller. Even wired in, it reserved nothing,
+   so two orders reading the same balance both passed and the account went over.
+   This is the check and the reservation in ONE synchronous step: there is no
+   await between reading what is owed and recording the new order, so in a single
+   Node process nothing can slip between them. A Postgres version must do the
+   same in one statement, or the race comes straight back.
+   --------------------------------------------------------------------------- */
+export function placeOnAccount(
+  book: CorporateOrder[],
+  account: CorporateAccount,
+  accountId: string,
+  amount: number,
+  costCentre: string,
+  orderId: string,
+  placedAt: string,
+  description: string,
+  paidUpTo?: string,
+): { placed: boolean; says: string; order: CorporateOrder | null } {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { placed: false, says: 'An amount on account is whole thebe, more than nothing.', order: null };
+  }
+  const owed = outstanding(book, accountId, paidUpTo);
+  const verdict = canOrder(account, owed, amount, costCentre);
+  if (!verdict.allowed) return { placed: false, says: verdict.says, order: null };
+  const order: CorporateOrder = {
+    order_id: orderId,
+    account_id: accountId,
+    cost_centre: costCentre,
+    amount,
+    placed_at: placedAt,
+    description,
+    state: 'placed',
+  };
+  book.push(order);
+  return { placed: true, says: verdict.says, order };
+}
+
+/** A cancelled order gives its credit back. It stays in the book, marked. */
+export function cancelOnAccount(book: CorporateOrder[], orderId: string): boolean {
+  const o = book.find((x) => x.order_id === orderId);
+  if (!o || o.state === 'cancelled') return false;
+  o.state = 'cancelled';
+  return true;
 }

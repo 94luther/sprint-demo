@@ -24,6 +24,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { settleOne, dayPayout, readyToPay, type SettleableOrder } from './settlement';
 import { SIMULATOR_SPLIT } from '../data-store/repositories/ledger.repo';
+import type { MerchantTerms } from './commission';
 
 const order = (over: Partial<SettleableOrder> = {}): SettleableOrder => ({
   order_id: 'SPR-1',
@@ -94,4 +95,35 @@ test('when Sprint is at fault, Sprint carries it, including the fee it did not e
   const s = settleOne(order({ delivered: false, fault: 'sprint', perishable: true }));
   assert.equal(s.sprint_absorbs, 20000 + 2500);
   assert.equal(s.merchant, 0);
+});
+
+/* ---------------- the payout carries the commission now ---------------- */
+
+const agreedFifteen = (): MerchantTerms => ({
+  merchant_id: 'M1',
+  merchant_name: 'Broadhurst Hardware',
+  commission_bp: 1500,
+  agreed: true,
+  agreed_on: '2026-09-16',
+  source: 'Signed schedule 2 of the merchant agreement',
+});
+
+test('THE PAYOUT KEEPS THE COMMISSION: a P200 basket at an agreed 15 percent pays the merchant P170 and Sprint P30', () => {
+  const day = dayPayout('2026-09-16', [order()], true, () => agreedFifteen());
+  assert.equal(day.lines[0].goods, 17000, 'the merchant was paid the full P200');
+  assert.equal(day.lines[0].commission, 3000);
+  assert.equal(day.sprint_commission, 3000, 'the P30 was dropped on the floor');
+  assert.equal(day.total, 17000);
+});
+
+test('an unagreed rate still earns nothing in the payout, by design', () => {
+  const day = dayPayout('2026-09-16', [order()], true, () => ({ ...agreedFifteen(), agreed: false, agreed_on: null }));
+  assert.equal(day.sprint_commission, 0);
+  assert.equal(day.total, 20000);
+});
+
+test('no terms lookup at all leaves the payout exactly as it was', () => {
+  const day = dayPayout('2026-09-16', [order()], true);
+  assert.equal(day.sprint_commission, 0);
+  assert.equal(day.total, 20000);
 });

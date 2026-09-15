@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import { OrdersRepo } from '../data-store/repositories/orders.repo';
 import { MerchantsRepo } from '../data-store/repositories/merchants.repo';
@@ -10,6 +10,7 @@ import { randomPointInGaborone } from '../common/waypoints';
 import { CreateOrderDto } from './dto';
 import { PaymentMethod } from '../common/types';
 import { OrderRecord } from '../data-store/interfaces';
+import { isVertical, mayList } from '../catalog/verticals';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['orange_money', 'myzaka', 'smega', 'card', 'cash'];
 
@@ -82,6 +83,20 @@ export class OrdersService {
       throw new BadRequestException('A delivery address is needed.');
     }
 
+    /* THE RULES LAYER, WIRED IN. Until 16 September 2026 verticals.ts was tested
+       sixteen ways and never called from this path, so a pharmacy order could be
+       placed through the API while the home page said pharmacy was shut. A shop
+       whose kind is not open cannot take an order, whatever the screen showed. */
+    if (isVertical(merchant.type)) {
+      const gate = mayList(merchant.type);
+      if (!gate.listable) {
+        throw new HttpException(
+          { code: 'NOT_OPEN', message: `${merchant.name} cannot take orders yet: ${gate.reason}` },
+          403,
+        );
+      }
+    }
+
     if (merchant.type === 'vape' && dto.age_confirmed !== true) {
       throw new HttpException({ code: 'AGE_GATE', message: 'Please confirm the customer is 18 or older before we can place this order.' }, 403);
     }
@@ -91,8 +106,11 @@ export class OrdersService {
       if (!found) {
         throw new BadRequestException(`Item ${it.item_id} is not on ${merchant.name}'s menu.`);
       }
-      if (!it.qty || it.qty < 1) {
-        throw new BadRequestException(`Quantity for ${found.name} needs to be at least 1.`);
+      /* Found by Codex on 16 Sep 2026: `!qty || qty < 1` let Infinity, 2.5 and
+         `true` through, and Infinity made the order total null. A quantity is a
+         whole number, and nobody orders a thousand of anything on a bike. */
+      if (!Number.isInteger(it.qty) || it.qty < 1 || it.qty > 999) {
+        throw new BadRequestException(`Quantity for ${found.name} must be a whole number from 1 to 999.`);
       }
       return { item_id: found.id, name: found.name, qty: it.qty, price_bwp: found.price_bwp };
     });
@@ -100,6 +118,9 @@ export class OrdersService {
     const total_bwp = Math.round(
       orderItems.reduce((sum, it) => sum + it.price_bwp * it.qty, 0) * 100,
     ) / 100;
+    if (!Number.isFinite(total_bwp) || total_bwp <= 0) {
+      throw new BadRequestException('The order total did not add up. Nothing was placed.');
+    }
 
     const point = randomPointInGaborone();
     const now = new Date().toISOString();
@@ -126,6 +147,13 @@ export class OrdersService {
     this.ordersRepo.create(order);
     this.ordersRepo.saveIdempotency(userId, idempotencyKey, order.id);
     this.outboxRepo.append('order.placed', order.id, { merchant_id: order.merchant_id, total_bwp: order.total_bwp });
+
+    /* Found by Codex on 16 Sep 2026: the store flushes on a two second timer, and
+       this used to return the order to the customer before that flush. A crash
+       in those two seconds lost the order AND its idempotency key, so the retry
+       placed a second order with a second id. An order is not placed until it is
+       on disk, so the write happens here, before anyone is told. */
+    this.store.flush();
 
     return this.buildResponse(order);
   }

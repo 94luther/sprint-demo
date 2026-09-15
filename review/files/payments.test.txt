@@ -162,22 +162,22 @@ test('cash cannot be refunded by software, and says so instead of failing quietl
   const book = new MemoryBook();
   take(book, req());
   move(book, 'k1', 'captured');
-  assert.throws(() => refund(book, 'k1', 100), /cannot be refunded by software/);
+  assert.throws(() => refund(book, 'k1', 100, 'r100'), /cannot be refunded by software/);
 });
 
 test('money that was never taken cannot be sent back', () => {
   const book = new MemoryBook();
   take(book, req({ rail: 'account', amount_thebe: 5000 }));
-  assert.throws(() => refund(book, 'k1', 100), /Only money actually taken/);
+  assert.throws(() => refund(book, 'k1', 100, 'r100'), /Only money actually taken/);
 });
 
 test('a refund can never exceed what was taken, even in two goes', () => {
   const book = new MemoryBook();
   take(book, req({ rail: 'account', amount_thebe: 5000 }));
   move(book, 'k1', 'captured');
-  refund(book, 'k1', 3000);
-  assert.throws(() => refund(book, 'k1', 2500), /more than was taken/);
-  refund(book, 'k1', 2000);
+  refund(book, 'k1', 3000, 'r3000');
+  assert.throws(() => refund(book, 'k1', 2500, 'r2500'), /more than was taken/);
+  refund(book, 'k1', 2000, 'r2000');
   assert.equal(book.get('k1')?.state, 'refunded');
 });
 
@@ -205,4 +205,32 @@ test('the cut is computed in whole thebe, never a fraction of one', () => {
 test('cash stays under the cap the cash engine already enforces', () => {
   assert.equal(RAILS.cash.maxThebe, 100000);
   assert.throws(() => take(new MemoryBook(), req({ amount_thebe: 100001 })), /does not take amounts over/);
+});
+
+/* ---------------- a retried refund is the same refund ---------------- */
+
+test('A RETRIED REFUND IS ONE REFUND: P20 tapped twice on a bad line stays P20', () => {
+  const book = new MemoryBook();
+  take(book, req({ rail: 'account', amount_thebe: 5000 }));
+  move(book, 'k1', 'captured');
+  refund(book, 'k1', 2000, 'rf-1');
+  refund(book, 'k1', 2000, 'rf-1');
+  refund(book, 'k1', 2000, 'rf-1');
+  assert.equal(book.get('k1')?.refunded_thebe, 2000, 'three taps became more than one refund');
+});
+
+test('the same refund key with a different amount is refused, never applied', () => {
+  const book = new MemoryBook();
+  take(book, req({ rail: 'account', amount_thebe: 5000 }));
+  move(book, 'k1', 'captured');
+  refund(book, 'k1', 2000, 'rf-1');
+  assert.throws(() => refund(book, 'k1', 1000, 'rf-1'), /different amount/);
+  assert.equal(book.get('k1')?.refunded_thebe, 2000);
+});
+
+test('a refund with no key of its own is refused outright', () => {
+  const book = new MemoryBook();
+  take(book, req({ rail: 'account', amount_thebe: 5000 }));
+  move(book, 'k1', 'captured');
+  assert.throws(() => refund(book, 'k1', 1000, ''), /needs its own key/);
 });
