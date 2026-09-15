@@ -191,9 +191,10 @@
 
     <!-- ================= SHOP ================= -->
     <section class="screen" id="s-shop">
-      <div class="eyebrow" id="sh-where">National Medical, Game City, Game City Mall, Kgale View</div>
-      <h1 id="sh-name" style="margin-bottom:6px">National Medical Supplies</h1>
+      <div class="eyebrow" id="sh-where">Broadhurst Hardware, Nelson Mandela Drive, Broadhurst</div>
+      <h1 id="sh-name" style="margin-bottom:6px">Broadhurst Hardware</h1>
       <p class="sub" id="sh-terms">Minimum P50.00 &#183; delivery P15.00</p>
+      <div class="seg small" id="sh-pick"></div>
       <div class="note warn">Over the counter items only. A prescription needs a script, a code and a
         document at the door.</div>
       <div id="sh-menu"></div>
@@ -225,8 +226,8 @@
       <div id="p-cash"></div>
 
       <h2>At the door</h2>
-      <div class="note warn" id="p-door">Medicine is handed to an adult and checked in front of you.
-        Nothing is left at a gate. You see this now, before you pay, not after.</div>
+      <div class="note warn" id="p-door">The parcel is photographed at the door and the photograph
+        is kept with the order. Nothing is left at a gate.</div>
 
       <div class="money" id="p-money"></div>
       <button class="act split" id="p-place"><span id="p-why"></span><span id="p-total"></span></button>
@@ -234,7 +235,7 @@
 
     <!-- ================= COUNTER ================= -->
     <section class="screen" id="s-counter">
-      <div class="eyebrow" id="c-shop">National Medical Supplies, Game City</div>
+      <div class="eyebrow" id="c-shop">Broadhurst Hardware, Nelson Mandela Drive</div>
       <h1 style="margin-bottom:0" id="c-title">New order</h1>
       <div class="big" id="c-big">1:30</div>
       <p class="under" id="c-under">to accept. The printer sounds until somebody touches it.</p>
@@ -268,7 +269,7 @@
 
       <div class="side">
         <div class="cell"><small>Naledi</small><b id="o-cust">Waiting</b><span id="o-cust2"></span></div>
-        <div class="cell"><small>The pharmacy</small><b id="o-shop">Nothing yet</b><span id="o-shop2"></span></div>
+        <div class="cell"><small>The shop</small><b id="o-shop">Nothing yet</b><span id="o-shop2"></span></div>
         <div class="cell"><small>Kabelo</small><b id="o-rider">Not assigned</b><span id="o-rider2"></span></div>
         <div class="cell"><small>The office</small><b id="o-office">Nobody at fault</b><span id="o-office2"></span></div>
       </div>
@@ -384,16 +385,42 @@
      Every screen below reads this object. Nothing keeps a second copy of it,
      which is the whole point: the counter packs what the customer picked.
      ========================================================================= */
-  var SHOP = {
-    id:21, name:'National Medical Supplies', category:'Pharmacy',
-    where:'National Medical, Game City, Game City Mall, Kgale View, Gaborone',
-    person:'Lesego', till:'71 000 000',
-    min:5000, fee:1500
-  };
-  var MENU = [
-    {id:2101, name:'Panado Paracetamol Tablets 50s', desc:'For mild to moderate pain relief', thebe:3590},
-    {id:2102, name:'Elastoplast Fabric Plasters 20s', desc:'Breathable wound protection', thebe:2250}
+  /* Two shops of two different KINDS, so the same engine can be seen saying yes to
+     one and no to the other. The kind is not decoration: it is the key the engine
+     looks up in verticals.VERTICALS, the same lookup the home page uses. */
+  var SHOPS = [
+    { id:44, vertical:'hardware', name:'Broadhurst Hardware', category:'Hardware and home',
+      where:'Broadhurst Hardware, Nelson Mandela Drive, Broadhurst, Gaborone',
+      person:'Tebogo', till:'71 000 000', min:5000, fee:2500,
+      door:'The parcel is photographed at the door and the photograph is kept with the order. ' +
+           'Nothing is left at a gate.',
+      menu:[
+        /* Priced for what a hardware DELIVERY basket actually is. The first draft put
+           a P899 drill here and two of them went over the P1000 cash cap, so the only
+           open rail refused and the demo dead ended. The engine was right and the
+           prices were wrong. */
+        {id:4401, name:'LED bulbs, 4 pack', desc:'Warm white, bayonet fitting', thebe:9900},
+        {id:4402, name:'Paint roller set', desc:'Frame, two sleeves and a tray', thebe:14500},
+        {id:4403, name:'Door hinges, pair', desc:'Brass, 100mm, screws included', thebe:6500}
+      ] },
+    { id:21, vertical:'pharmacy', name:'National Medical Supplies', category:'Pharmacy',
+      where:'National Medical, Game City, Game City Mall, Kgale View, Gaborone',
+      person:'Lesego', till:'71 000 000', min:5000, fee:1500,
+      door:'Medicine is handed to an adult and checked in front of you. Nothing is left at a gate. ' +
+           'You see this now, before you pay, not after.',
+      menu:[
+        {id:2101, name:'Panado Paracetamol Tablets 50s', desc:'For mild to moderate pain relief', thebe:3590},
+        {id:2102, name:'Elastoplast Fabric Plasters 20s', desc:'Breathable wound protection', thebe:2250}
+      ] }
   ];
+  var SHOP = SHOPS[0];
+  var MENU = SHOP.menu;
+
+  /* Ask the engine, never a copy of the answer. */
+  function shopIsOpen(){
+    if (!(E && E.verticals)) return { listable:true, reason:null };
+    return E.verticals.mayList(SHOP.vertical);
+  }
 
   var basket = {
     q:{}, shopId:null, ref:null,
@@ -423,7 +450,26 @@
   function short(){ return Math.max(0, SHOP.min - basket.goods()); }
 
   /* one redraw for every screen that reads the basket */
-  function changed(){ try{ drawShop(); drawPay(); cDraw(); drawHomeBasket(); drawPip(); }catch(e){} }
+  function drawPick(){
+    var el = $('sh-pick'); if (!el) return;
+    el.innerHTML = SHOPS.map(function(sh, n){
+      var shut = (E && E.verticals) ? !E.verticals.mayList(sh.vertical).listable : false;
+      return '<span' + (sh.id === SHOP.id ? ' class="on"' : '') + ' data-shop="' + n + '">' +
+        sh.name.split(' ')[0] + (shut ? ' &#128274;' : '') + '</span>';
+    }).join('');
+  }
+  function pickShop(n){
+    if (SHOPS[n].id === SHOP.id) return;
+    SHOP = SHOPS[n]; MENU = SHOP.menu;
+    basket.clear();                    /* one basket, one shop: changing shop empties it */
+    pay.rail = null; pay.tender = null; pay.taps = 0; pay.paid = null; pay.err = null;
+    $('sh-name').textContent = SHOP.name;
+    $('sh-where').textContent = SHOP.where;
+    $('c-shop').textContent = SHOP.name + ', ' + SHOP.where.split(',')[1].trim();
+    $('p-door').textContent = SHOP.door;
+    changed();
+  }
+  function changed(){ try{ drawPick(); drawShop(); drawPay(); cDraw(); drawHomeBasket(); drawPip(); }catch(e){} }
 
   /* ---------- navigation ---------- */
   function show(name){
@@ -570,7 +616,10 @@
     var c = '';
     if (pay.rail === 'cash'){
       c = '<h2>3. What you are paying with</h2><div class="seg small" id="p-tender">' +
-        [10000,20000,15000].map(function(v){
+        /* What you could hand the rider is asked of the cash engine, not listed here.
+           A hardcoded P100, P200, P150 could not cover a cordless drill, which is
+           exactly the dead end a copy of the truth always ends in. */
+        ((E && E.cash) ? E.cash.payableWith(total()).slice(0, 3) : [10000,20000,15000]).map(function(v){
           return '<span' + (pay.tender === v ? ' class="on"' : '') + ' data-v="' + v + '">' + P(v) + '</span>';
         }).join('') + '</div>';
       if (pay.tender !== null){
@@ -617,9 +666,20 @@
     }
     slot.innerHTML = proof;
 
+    /* THE GATE. The same call the home page makes. A shop whose kind is not open
+       cannot be paid for, however far down the screen the customer has come. */
+    var open = shopIsOpen();
+    if (!open.listable) {
+      slot.innerHTML = '<div class="note bad"><b>' + SHOP.category + ' is not open yet.</b> ' +
+        open.reason + ' Everything else on this screen is built and waiting: the script, the ' +
+        'one time code, the identity check at the door and the custody record. The button ' +
+        'below is held by the engine, not by this page.</div>';
+    }
+
     var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
-    var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk;
-    $('p-why').textContent = basket.count() === 0 ? 'Your basket is empty'
+    var ready = open.listable && basket.count() > 0 && pay.addr && pay.rail !== null && cashOk;
+    $('p-why').textContent = !open.listable ? (SHOP.category + ' is not open yet')
+      : basket.count() === 0 ? 'Your basket is empty'
       : !pay.addr ? 'Confirm the address first'
       : !pay.rail ? 'Choose how you pay'
       : !cashOk ? 'Pick an amount the rider can change'
@@ -627,6 +687,10 @@
     $('p-total').textContent = P(total());
     $('p-place').disabled = !ready;
   }
+  $('sh-pick').onclick = function(e){
+    var t = e.target.closest('[data-shop]'); if (!t) return;
+    pickShop(+t.getAttribute('data-shop'));
+  };
   $('p-addr').onclick = function(e){
     var t = e.target.closest('span'); if (!t) return;
     pay.addr = t.getAttribute('data-a') === 'yes'; drawPay();
@@ -642,6 +706,7 @@
     pay.tender = +t.getAttribute('data-v'); drawPay();
   };
   $('p-place').onclick = function(){
+    if (!shopIsOpen().listable) return;   /* belt as well as braces: the engine holds it */
     /* The key is made from the order and the rail, so it is the SAME key every
        time this button is pressed for this order. That is the whole trick: the
        engine hands back the payment it already made instead of making another. */
