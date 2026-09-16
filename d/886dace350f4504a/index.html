@@ -73,6 +73,20 @@
   .srch{display:flex;align-items:center;gap:9px;margin:8px 16px 0;background:#F2F3F2;
         border-radius:15px;height:46px;padding:0 13px;color:#8d918f;font-size:13.5px;cursor:pointer}
   .srch svg{width:17px;height:17px;stroke:#8d918f;fill:none;stroke-width:2.2;flex:none}
+  .srch input{flex:1;min-width:0;border:0;background:transparent;outline:none;font:inherit;
+              font-size:13.5px;color:#0E1211}
+  .srch input::placeholder{color:#8d918f}
+  #qres{margin:8px 16px 0;background:#fff;border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+  #qres .qh{padding:9px 14px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+            color:#6B6F6D;background:#F7F8F7}
+  #qres .qr{display:flex;gap:11px;align-items:center;padding:11px 14px;border-top:1px solid var(--hair);cursor:pointer}
+  #qres .qr .th{flex:none;width:40px;height:40px;border-radius:10px;overflow:hidden;background:#F2F3F2;
+                display:flex;align-items:center;justify-content:center}
+  #qres .qr .th img{max-width:78%;max-height:78%;object-fit:contain}
+  #qres .qr .th.dark{background:#14100E}
+  #qres .qr b{display:block;font-size:14px;font-weight:700;color:var(--ink)}
+  #qres .qr small{display:block;font-size:12px;color:#6B6F6D;margin-top:1px}
+  #qres .none{padding:16px 14px;font-size:13px;color:#6B6F6D}
   /* a merchant identity block: approved logo, or the name set in type. NEVER a photograph. */
   .idblock{position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:7px;
            background:rgba(255,255,255,.95);border-radius:10px;padding:5px 9px;max-width:88%}
@@ -344,10 +358,12 @@
             <span><i>Deliver to</i><b>Block 9, Gaborone</b></span>
           </div>
         </div>
-        <div class="srch" data-act="go:browse">
+        <label class="srch">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
-          Search shops, food, groceries and more
-        </div>
+          <input id="q" type="search" placeholder="Search shops, food, groceries and more"
+                 autocomplete="off" enterkeyhint="search">
+        </label>
+        <div id="qres" hidden></div>
         <!-- the moving hero, three panels cut from his three screens -->
         <div class="hero" id="hero" aria-label="Today on Sprint Me">
           <div class="track" id="hero-track">
@@ -405,6 +421,12 @@
 
     <!-- ================= PAY ================= -->
     <section class="screen" id="s-pay">
+      <div id="p-empty" hidden style="padding:44px 8px;text-align:center">
+        <p style="font-size:17px;font-weight:700;margin:0 0 6px">Your basket is empty</p>
+        <p class="sub" style="margin:0 0 18px">Add something from any shop. Everything travels together on one delivery.</p>
+        <button class="act" data-go-browse="1">Find a shop</button>
+      </div>
+      <div id="p-form">
       <div class="eyebrow">Before you pay</div>
       <h1 style="margin-bottom:6px">Your basket</h1>
       <p class="sub" id="p-shops" style="color:var(--green);font-weight:600"></p>
@@ -431,6 +453,7 @@
 
       <div class="money" id="p-money"></div>
       <button class="act split" id="p-place"><span id="p-why"></span><span id="p-total"></span></button>
+      </div>
     </section>
 
     <!-- ================= COUNTER ================= -->
@@ -704,7 +727,11 @@
     Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function(t){ t.className = 'tab' + (t.getAttribute('data-s') === name ? ' on' : ''); });
     $('scroll').scrollTop = 0;
     /* the picture carries its own nav, so the coded tab bar only shows elsewhere */
-    $('tabs').style.display = (name === 'home') ? 'none' : '';
+    $('tabs').style.display = '';   /* one shell, always. The picture that had its own nav is gone. */
+    /* the basket bar is decided by WHICH SCREEN IS ON, so it has to be redrawn
+       after the switch, not before it. Drawing it inside changed() left it
+       covering the Place order button. */
+    if (typeof drawBar === 'function') drawBar();
   }
   $('tabs').onclick = function(e){ var t = e.target.closest('.tab'); if (t && t.getAttribute('data-s')) show(t.getAttribute('data-s')); };
   show('home');   /* the picture carries its own nav; hide the coded tab bar on first load */
@@ -736,7 +763,10 @@
   /* the live basket bar sits exactly over the picture's own bar once something is in it */
   function drawBar(){
     var bar = $('hbar'), n = basket.count(), shops = basket.shops().length;
-    if (!n){ bar.className = 'hbar'; bar.innerHTML = ''; return; }
+    /* Never over the basket or the checkout: it covered Place order, and on the
+       basket screen it pointed at the screen you were already looking at. */
+    var here = (document.querySelector('.screen.on') || {}).id;
+    if (!n || here === 's-pay' || here === 's-order'){ bar.className = 'hbar'; bar.innerHTML = ''; return; }
     bar.className = 'hbar on';
     bar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#05462E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-2 10H5z"/><path d="M8 9l2-5M16 9l-2-5"/></svg>'
       + '<div class="t"><b>' + n + (n === 1 ? ' item' : ' items') + ' &#183; ' + shops + (shops === 1 ? ' shop' : ' shops') + '</b>'
@@ -855,7 +885,9 @@
       '<div class="ph">' + cover(s) +
         '<span class="fav"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.6-7-9.3A4 4 0 0 1 12 8a4 4 0 0 1 7 2.7C19 15.4 12 20 12 20z"/></svg></span></div>' +
       '<div class="nm">' + s.name + '</div><div class="cu">' + s.cuisine + '</div>' +
-      '<div class="mt">' + s.est + ' <em>&#183;</em> ' + P(s.fee) + ' delivery</div></div>';
+      '<div class="mt">' + (s.menuStatus === 'verified'
+         ? s.est + ' <em>&#183;</em> ' + P(s.fee) + ' delivery'
+         : 'Menu not sent yet') + '</div></div>';
   }
   function listRow(s){
     return '<div class="lrow" data-shop="' + s.id + '"><div class="th">' +
@@ -906,6 +938,17 @@
   /* the shop menu, one photograph on every row */
   function drawShop(){
     if (!FSHOP || !MENU) return;
+    if (!MENU.length){
+      $('sh-menu').innerHTML = '<div style="padding:34px 18px;text-align:center">'
+        + '<p style="font-size:16px;font-weight:700;margin:0 0 6px">' + FSHOP.name + ' has not sent us a menu yet</p>'
+        + '<p class="sub" style="margin:0 0 16px">This shop is on the Sprint Me network, but its prices and stock come '
+        + 'from the shop itself and have not arrived. Nothing here is invented while we wait.</p>'
+        + '<button class="act" data-go-browse="1">See shops you can order from</button></div>';
+      $('sh-terms').textContent = '';
+      $('sh-count').textContent = 'No menu yet';
+      $('sh-go').disabled = true;
+      return;
+    }
     $('sh-menu').innerHTML = MENU.map(function(m){
       var n = (basket.groups[FSHOP.id] || {})[m.id] || 0;
       return '<div class="mrow"><div class="tx"><b>' + m.name + '</b>' +
@@ -939,6 +982,63 @@
     if (c) openFeedShop(+c.getAttribute('data-shop'));
   };
   drawFeed();
+  /* ---------- search: shops AND items, forgiving of spelling ----------
+     It searches the same one collection the feed is built from, so it can never
+     show a shop the feed does not have. An item hit opens its shop. */
+  function normalise(t){ return (t || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function searchAll(raw){
+    var q = normalise(raw);
+    if (q.length < 2) return null;
+    var words = q.split(' ');
+    function hits(hay){ var h = normalise(hay); return words.every(function(w){ return h.indexOf(w) >= 0; }); }
+    var shops = FEED_SHOPS.filter(function(s){ return hits(s.name + ' ' + s.cuisine + ' ' + s.hub + ' ' + s.cat); });
+    var items = [];
+    FEED_SHOPS.forEach(function(s){
+      (FEED_MENUS[s.id] || []).forEach(function(m){
+        if (hits(m.name + ' ' + (m.desc || '') + ' ' + s.name)) items.push({ shop: s, item: m });
+      });
+    });
+    return { shops: shops.slice(0, 6), items: items.slice(0, 8) };
+  }
+  function chip(s){
+    var ok = (s.logoStatus === 'approved-local' || s.logoStatus === 'official-site') && s.logo;
+    return '<span class="th' + (ok && s.onDark ? ' dark' : '') + '">' +
+      (ok ? '<img src="' + s.logo + '" alt="">' : '') + '</span>';
+  }
+  function drawSearch(){
+    var box = $('qres'), r = searchAll($('q').value);
+    if (!r){ box.hidden = true; box.innerHTML = ''; return; }
+    var h = '';
+    if (r.shops.length){
+      h += '<div class="qh">Shops</div>' + r.shops.map(function(s){
+        return '<div class="qr" data-shop="' + s.id + '">' + chip(s) +
+          '<div><b>' + s.name + '</b><small>' + s.cuisine + ' &#183; ' + s.hub +
+          (s.menuStatus === 'verified' ? '' : ' &#183; menu not sent yet') + '</small></div></div>';
+      }).join('');
+    }
+    if (r.items.length){
+      h += '<div class="qh">Items</div>' + r.items.map(function(x){
+        return '<div class="qr" data-shop="' + x.shop.id + '">' + chip(x.shop) +
+          '<div><b>' + x.item.name + '</b><small>' + x.shop.name + ' &#183; ' +
+          (x.item.thebe === null || x.item.thebe === undefined ? 'price to confirm' : P(x.item.thebe)) +
+          '</small></div></div>';
+      }).join('');
+    }
+    if (!h) h = '<div class="none">Nothing matches that yet. Only ' +
+      FEED_SHOPS.filter(function(s){ return s.menuStatus === 'verified'; }).length +
+      ' shops have sent their menus so far.</div>';
+    box.innerHTML = h; box.hidden = false;
+  }
+  $('q').addEventListener('input', drawSearch);
+  $('qres').addEventListener('click', function(e){
+    var row = e.target.closest('[data-shop]'); if (!row) return;
+    $('q').value = ''; $('qres').hidden = true; $('qres').innerHTML = '';
+    openFeedShop(+row.getAttribute('data-shop'));
+  });
+  /* the two new buttons that send somebody back to a shop they can actually order from */
+  document.addEventListener('click', function(e){
+    if (e.target.closest('[data-go-browse]')) show('browse');
+  });
   /* the counter and ops screens are staff tools: only on the tab bar with ?ops=1 */
   if (/[?&]ops=1/.test(location.search)){
     $('tabs').insertAdjacentHTML('beforeend',
@@ -1114,7 +1214,7 @@
   /* ---------- pay: four gates, cash change from real Botswana money ---------- */
   var CASH_NOTES = [20000,10000,5000,2000,1000], COINS = [500,200,100,50,25,10,5];
   function changeFor(t, tender){
-    var left = tender - t, out = [], all = NOTES.concat(COINS);
+    var left = tender - t, out = [], all = CASH_NOTES.concat(COINS);
     if (left < 0) return null;
     for (var i=0;i<all.length;i++){ while (left >= all[i]){ out.push(all[i]); left -= all[i]; } }
     return left === 0 ? out : null;
@@ -1163,6 +1263,9 @@
 
     /* the basket, grouped by shop: the picture on the home screen promises
        "different shops, one delivery", and this is where that promise is shown */
+    var empty = basket.count() === 0;
+    $('p-empty').hidden = !empty;
+    $('p-form').hidden = empty;
     var shopsNow = basket.shops();
     $('p-shops').textContent = shopsNow.length === 0 ? '' :
       shopsNow.length === 1 ? '1 shop, one delivery' : shopsNow.length + ' shops, one delivery';
@@ -1174,7 +1277,9 @@
           '<span data-rm="' + sh.id + '" style="font-size:11.5px;color:var(--faint);cursor:pointer">Remove shop</span></div>' +
         rows.map(function(r){
           return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">' +
-            '<span>' + r.n + ' &#215; ' + r.p.name + '</span><b style="font-variant-numeric:tabular-nums">' + P(r.p.thebe * r.n) + '</b></div>';
+            '<span>' + r.n + ' &#215; ' + r.p.name + '</span><b style="font-variant-numeric:tabular-nums">'
+            + ((r.p.thebe === null || r.p.thebe === undefined)
+                ? '<span class="pend">price to confirm</span>' : P(r.p.thebe * r.n)) + '</b></div>';
         }).join('') + '</div>';
     }).join('');
     var sep = separateFees(), one = deliveryFee();
