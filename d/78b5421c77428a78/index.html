@@ -1,0 +1,902 @@
+<meta name="referrer" content="no-referrer">
+<script>
+/* Tells Luther this link was opened. Sends a random token and nothing
+   else: no name, no address, no cookie, no referrer. */
+(function(){try{var i=new Image();i.referrerPolicy="no-referrer";
+i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+Date.now();}catch(e){}})();
+</script>
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta name="googlebot" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sprint, the phone</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --green:#3AAA35; --amber:#c47a10; --red:#b3261e;
+    --ink:#111; --sub:#5f5f5f; --faint:#9a9a9a;
+    --hair:#ececec; --wash:#f5f5f5; --white:#fff; --ground:#e9e9e6;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);display:grid;place-items:center;padding:28px 16px;
+       font:15px/1.5 Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+
+  .device{width:100%;max-width:392px;background:#161616;border-radius:46px;padding:11px;
+          box-shadow:0 30px 60px rgba(0,0,0,.22)}
+  .app{background:var(--white);border-radius:37px;overflow:hidden;height:812px;
+       display:flex;flex-direction:column;min-width:0}
+  .sys{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:12px;font-weight:600}
+  .scroll{flex:1;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:22px 24px 0}
+  .scroll::-webkit-scrollbar{width:0}
+  .screen{display:none}
+  .screen.on{display:block}
+
+  /* On a real phone the drawn handset is wasted glass. The app takes the whole
+     screen, the way it will when it ships. The fake status bar goes too, because
+     the phone has a real one. Below 560px there is no desktop to frame it for. */
+  @media (max-width:560px){
+    body{display:flex;flex-direction:column;padding:0;background:var(--white);
+         height:100vh;height:100dvh}
+    .pub-banner{flex:none;margin:0;border-radius:0;max-width:none;padding:7px 12px 6px;
+                padding-top:calc(7px + env(safe-area-inset-top))}
+    .pub-foot{display:none}
+    .device{flex:1;min-height:0;max-width:none;border-radius:0;padding:0;box-shadow:none;
+            background:var(--white);display:flex;flex-direction:column}
+    .app{flex:1;min-height:0;height:auto;border-radius:0}
+    .sys{display:none}
+    .scroll{padding-top:calc(18px + env(safe-area-inset-top))}
+    .pub-banner ~ .device .scroll{padding-top:18px}
+    .tabs{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  }
+
+  .addr{font-size:13px;color:var(--sub);display:flex;align-items:center;gap:6px}
+  .addr svg{width:11px;height:11px}
+  h1{margin:6px 0 22px;font-size:26px;font-weight:700;letter-spacing:-.6px;line-height:1.15}
+  .eyebrow{font-size:12px;color:var(--faint);letter-spacing:.02em}
+
+  .search{background:var(--wash);border-radius:16px;padding:14px 16px;display:flex;align-items:center;
+          gap:11px;color:var(--faint);font-size:14px}
+  .search svg{width:16px;height:16px;flex:none}
+
+  .seg{display:flex;gap:22px;margin:26px 0 0;border-bottom:1px solid var(--hair)}
+  .seg span{padding:0 0 11px;font-size:14px;font-weight:500;color:var(--faint);cursor:pointer;
+            border-bottom:2px solid transparent;margin-bottom:-1px}
+  .seg span.on{color:var(--ink);font-weight:600;border-color:var(--ink)}
+  .seg.small{margin-top:18px}
+  .seg.small span{font-size:13px;padding-bottom:9px}
+
+  .cats{display:flex;gap:18px;overflow-x:auto;min-width:0;padding:26px 0 8px;scrollbar-width:none}
+  .cats::-webkit-scrollbar{height:0}
+  .cat{flex:none;width:64px;text-align:center;cursor:pointer}
+  .cat i{display:grid;place-items:center;width:64px;height:64px;border-radius:20px;background:var(--wash);
+         font-style:normal;font-size:24px;margin-bottom:8px}
+  .cat span{font-size:12px;color:var(--sub)}
+
+  h2{margin:34px 0 4px;font-size:18px;font-weight:600;letter-spacing:-.3px}
+  .sub{font-size:12.5px;color:var(--faint);margin:0 0 16px;line-height:1.5}
+
+  .shop{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--hair);cursor:pointer}
+  .shop:last-of-type{border-bottom:none}
+  .shop i{width:58px;height:58px;border-radius:16px;flex:none;display:grid;place-items:center;
+          font-style:normal;font-size:24px}
+  .shop b{display:block;font-size:15px;font-weight:600;letter-spacing:-.2px}
+  .shop small{display:block;font-size:12.5px;color:var(--sub);margin-top:3px}
+  .shop em{margin-left:auto;font-style:normal;font-size:13px;font-weight:600;white-space:nowrap;
+           font-variant-numeric:tabular-nums}
+  .shop em.tbc{color:var(--faint);font-weight:500;font-size:12px}
+
+  .send{margin:30px 0 26px;padding:18px 20px;border:1px solid var(--hair);border-radius:20px}
+  .send b{display:block;font-size:15px;font-weight:600}
+  .send small{display:block;font-size:12.5px;color:var(--sub);margin-top:4px;line-height:1.5}
+  .send .price{margin-top:12px;font-size:22px;font-weight:600;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+  .send .price span{font-size:12.5px;color:var(--faint);font-weight:500;margin-left:6px}
+
+  /* ---------- the menu and the one basket ---------- */
+  .item{display:flex;gap:12px;align-items:flex-start;padding:15px 0;border-bottom:1px solid var(--hair)}
+  .item:last-of-type{border-bottom:none}
+  .item div{flex:1;min-width:0}
+  .item b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.1px}
+  .item small{display:block;font-size:12.5px;color:var(--sub);margin-top:3px;line-height:1.4}
+  .item .p{display:block;font-size:13.5px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+  .step{display:flex;align-items:center;background:var(--ink);border-radius:18px;height:34px;flex:none}
+  .step button{width:34px;height:34px;border:none;background:none;color:#fff;font-size:17px;
+               cursor:pointer;font-family:inherit;line-height:1;padding:0}
+  .step .n{width:22px;text-align:center;color:#fff;font-weight:700;font-size:13.5px}
+  .addbtn{height:34px;padding:0 16px;border-radius:18px;border:1px solid #ddd;background:none;
+          font:600 13px Inter,sans-serif;cursor:pointer;color:var(--ink);flex:none}
+  .proof{font-size:12px;color:#1e5c1c;background:#eaf4e9;border-radius:14px;padding:11px 14px;
+         line-height:1.5;margin:18px 0 4px}
+  .basketbar{border-top:1px solid var(--hair);padding:12px 24px 0;margin:0 -24px}
+
+  /* ---------- the counter and the order share these ---------- */
+  .big{margin:30px 0 4px;font-size:44px;font-weight:700;letter-spacing:-1.5px;line-height:1;
+       font-variant-numeric:tabular-nums}
+  .big.amber{color:var(--amber)} .big.red{color:var(--red)} .big.green{color:var(--green)}
+  .under{font-size:14px;color:var(--sub);line-height:1.55;max-width:30ch}
+  .under b{color:var(--ink);font-weight:600}
+
+  .row{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--hair)}
+  .row:last-child{border-bottom:none}
+  .row .k{width:24px;flex:none;font-size:12px;color:var(--faint);text-align:center;padding-top:2px;
+          font-variant-numeric:tabular-nums}
+  .row .k.done{color:var(--green)}
+  .row div{font-size:13.5px;color:var(--sub);line-height:1.45}
+  .row div b{display:block;color:var(--ink);font-weight:600}
+  .row .amt{margin-left:auto;font-size:13px;font-weight:600;color:var(--ink);
+            font-variant-numeric:tabular-nums;white-space:nowrap}
+  .row.dim{opacity:.38}
+
+  .side{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:26px}
+  .cell{padding:14px 15px;border:1px solid var(--hair);border-radius:18px;min-height:88px}
+  .cell small{display:block;font-size:11px;color:var(--faint);margin-bottom:5px}
+  .cell b{display:block;font-size:14px;font-weight:600;letter-spacing:-.2px;line-height:1.3}
+  .cell span{display:block;font-size:12px;color:var(--sub);margin-top:4px;line-height:1.4}
+
+  .money{margin-top:22px;border-top:1px solid var(--hair);padding-top:14px}
+  .money div{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:var(--sub)}
+  .money div b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  .money p{margin:8px 0 0;font-size:12.5px;color:var(--faint);line-height:1.5}
+
+  .act{margin:28px 0 26px;background:var(--ink);color:#fff;border-radius:18px;padding:16px;text-align:center;
+       font-size:15px;font-weight:600;cursor:pointer;border:none;width:100%;font-family:inherit;
+       display:flex;justify-content:center;gap:10px}
+  .act.split{justify-content:space-between}
+  .act.quiet{background:var(--wash);color:var(--ink)}
+  .act[disabled]{opacity:.35;cursor:default}
+  .acts{display:flex;gap:10px;margin:28px 0 26px}
+  .acts .act{margin:0;flex:1;padding:14px 8px;font-size:13.5px}
+
+  .note{border-radius:16px;padding:13px 15px;font-size:12.5px;line-height:1.5;margin:16px 0}
+  .note.warn{background:#fef0dc;color:#7a4a08}
+  .note.good{background:#eaf4e9;color:#1e5c1c}
+  .note.bad{background:#fdecea;color:#8c1d18}
+  .note.plain{background:var(--wash);color:var(--sub)}
+  .note b{font-weight:600}
+
+  .meter{height:7px;border-radius:4px;background:var(--hair);overflow:hidden;margin-top:7px}
+  .meter i{display:block;height:100%;background:var(--red);border-radius:4px}
+
+  /* ---------- tracking ---------- */
+  .map{margin:24px 0 0;border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:#fafafa}
+  .map svg{display:block;width:100%;height:210px}
+  .win{display:flex;align-items:baseline;gap:10px;margin-top:30px}
+  .win .big{margin:0}
+  .win small{font-size:13px;color:var(--faint)}
+  .rider{display:flex;gap:14px;align-items:center;padding:18px 0 14px;border-bottom:1px solid var(--hair);margin-top:22px}
+  .rider i{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;
+           background:var(--wash);font-style:normal;font-size:20px}
+  .rider b{display:block;font-size:15px;font-weight:600}
+  .rider small{display:block;font-size:12.5px;color:var(--sub);margin-top:2px}
+  .rider em{margin-left:auto;font-style:normal;font-size:13.5px;font-weight:600;color:var(--green)}
+  .where{padding:14px 0 0}
+  .where b{display:block;font-size:14px;font-weight:600}
+  .where small{display:block;font-size:12.5px;color:var(--sub);margin-top:3px;line-height:1.5}
+
+  .tabs{display:flex;padding:12px 4px 16px;border-top:1px solid var(--hair);background:var(--white)}
+  .tab{flex:1;text-align:center;font-size:10px;color:var(--faint);cursor:pointer;border:none;
+       background:none;font-family:inherit;padding:0 1px;position:relative}
+  .tab i{display:block;font-style:normal;font-size:18px;margin-bottom:3px;opacity:.45}
+  .tab.on{color:var(--ink);font-weight:600}
+  .tab.on i{opacity:1}
+  .pip{position:absolute;top:-2px;right:50%;margin-right:-19px;background:var(--green);color:#fff;
+       font-size:9.5px;font-weight:700;border-radius:9px;min-width:16px;padding:1px 4px;line-height:1.35}
+  cite{font-style:normal;cursor:help}
+</style>
+
+<div class="pub-banner" style="max-width:392px;margin:0 auto 14px;font:600 11.5px Inter,sans-serif;color:#7a4a08;background:#fef0dc;border-radius:14px;padding:10px 14px;line-height:1.5;text-align:center">Example data. This is a working prototype, not the live Sprint system.</div>
+<div class="device">
+ <div class="app">
+  <div class="sys"><span id="clock">10:34</span><span>&#9679;&#9679;&#9679;</span></div>
+  <div class="scroll" id="scroll">
+
+    <!-- ================= HOME ================= -->
+    <section class="screen on" id="s-home">
+      <div class="addr">Plot 22418, Block 9
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5f5f5f" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <h1>What do you need<br>brought to you?</h1>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" stroke-width="2.2">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>
+        A shop, a medicine, a parcel
+      </div>
+      <div id="h-basket"></div>
+      <div class="seg" id="seg">
+        <span class="on" data-k="deliver">Deliver</span>
+        <span data-k="collect">Collect</span>
+      </div>
+      <div class="cats" id="cats"></div>
+      <h2 id="h2">Open now</h2>
+      <p class="sub" id="sub">No ratings. Sprint has never collected one. Tap a shop to place an order.</p>
+      <div id="shops"></div>
+      <div class="send">
+        <b>Send a parcel</b>
+        <small>Anywhere on the Sprint network. Next working day.</small>
+        <div class="price" style="font-size:15px">Pricing on request<span>half a kilo and up</span></div>
+      </div>
+    </section>
+
+    <!-- ================= SHOP ================= -->
+    <section class="screen" id="s-shop">
+      <div class="eyebrow" id="sh-where">Clicks Game City, Game City Mall, Kgale View</div>
+      <h1 id="sh-name" style="margin-bottom:6px">Clicks Pharmacy</h1>
+      <p class="sub" id="sh-terms">Minimum P50.00 &#183; delivery P15.00</p>
+      <div class="note warn">Over the counter items only. A prescription needs a script, a code and a
+        document at the door.</div>
+      <div id="sh-menu"></div>
+      <div class="proof" id="sh-proof"></div>
+      <div class="basketbar">
+        <p class="sub" id="sh-msg" style="margin:0 0 10px"></p>
+        <button class="act split" id="sh-go" style="margin-top:0"><span id="sh-count"></span><span id="sh-total"></span></button>
+      </div>
+    </section>
+
+    <!-- ================= PAY ================= -->
+    <section class="screen" id="s-pay">
+      <div class="eyebrow">Before you pay</div>
+      <h1 style="margin-bottom:6px">Four things<br>have to be true</h1>
+      <p class="sub">Each one is a rule from the order engine, not a form field.</p>
+
+      <h2>1. Where the rider goes</h2>
+      <div class="note plain"><b>Plot 22418, Block 9</b><br>Blue gate opposite the primary school.
+        Ring the bell, the gate is usually locked.</div>
+      <div class="seg small" id="p-addr">
+        <span data-a="no">Not confirmed</span><span data-a="yes">That is right</span>
+      </div>
+      <p class="sub" style="margin-top:10px">A plot number on its own does not find a house here, so a
+        landmark is required before the button unlocks.</p>
+
+      <h2>2. How you pay</h2>
+      <div id="p-rails"></div>
+
+      <div id="p-cash"></div>
+
+      <h2>At the door</h2>
+      <div class="note warn" id="p-door">Medicine is handed to an adult and checked in front of you.
+        Nothing is left at a gate. You see this now, before you pay, not after.</div>
+
+      <div class="money" id="p-money"></div>
+      <button class="act split" id="p-place"><span id="p-why"></span><span id="p-total"></span></button>
+    </section>
+
+    <!-- ================= COUNTER ================= -->
+    <section class="screen" id="s-counter">
+      <div class="eyebrow" id="c-shop">Clicks Pharmacy, Game City</div>
+      <h1 style="margin-bottom:0" id="c-title">New order</h1>
+      <div class="big" id="c-big">1:30</div>
+      <p class="under" id="c-under">to accept. The printer sounds until somebody touches it.</p>
+
+      <div class="seg small" id="c-till">
+        <span class="on" data-t="on">Till on</span>
+        <span data-t="quiet">Went quiet</span>
+        <span data-t="boxed">Never unboxed</span>
+      </div>
+      <div class="seg small" id="c-gone" style="margin-top:6px">
+        <span class="on" data-g="30">30 sec ago</span>
+        <span data-g="300">5 min ago</span>
+        <span data-g="660">11 min ago</span>
+      </div>
+
+      <h2 style="margin-top:30px" id="c-pickhead">Pick</h2>
+      <div id="c-pick"></div>
+      <div class="proof" id="c-proof"></div>
+
+      <h2>If nobody touches it</h2>
+      <div id="c-ladder"></div>
+
+      <button class="act" id="c-accept">Accept</button>
+    </section>
+
+    <!-- ================= ORDER ================= -->
+    <section class="screen" id="s-order">
+      <div class="eyebrow" id="o-head">Order SC-4417</div>
+      <div class="big" id="o-big" style="margin-top:12px;font-size:34px">placed</div>
+      <p class="under" id="o-under"></p>
+
+      <div class="side">
+        <div class="cell"><small>Naledi</small><b id="o-cust">Waiting</b><span id="o-cust2"></span></div>
+        <div class="cell"><small>The pharmacy</small><b id="o-shop">Nothing yet</b><span id="o-shop2"></span></div>
+        <div class="cell"><small>Kabelo</small><b id="o-rider">Not assigned</b><span id="o-rider2"></span></div>
+        <div class="cell"><small>The office</small><b id="o-office">Nobody at fault</b><span id="o-office2"></span></div>
+      </div>
+
+      <div class="money" id="o-money" hidden></div>
+
+      <h2 style="margin-top:28px">What the engine did</h2>
+      <p class="sub">Every line is a real call into the order engine and its real answer.</p>
+      <div id="o-log"></div>
+
+      <div class="acts">
+        <button class="act" id="o-run">Run it</button>
+        <button class="act quiet" id="o-stock">Out of stock</button>
+        <button class="act quiet" id="o-absent">Nobody home</button>
+      </div>
+    </section>
+
+    <!-- ================= TRACK ================= -->
+    <section class="screen" id="s-track">
+      <div class="eyebrow" id="t-head">Order SC-4417</div>
+      <div class="win"><div class="big" id="t-big">10:42 to 10:52</div></div>
+      <p class="under" id="t-under">Arriving between. Nine in ten land inside this window.</p>
+
+      <div class="map">
+        <svg viewBox="0 0 340 210" role="img" aria-label="Live map of the rider approaching the address">
+          <g id="t-blocks"></g>
+          <path d="M-10 142 C 70 136, 130 156, 220 148 S 330 132, 350 138" stroke="#e6edf1" stroke-width="9" fill="none"/>
+          <g id="t-roads"></g>
+          <path id="t-route" d="M 34 178 L 84 178 L 84 126 L 160 126 L 160 82 L 240 82 L 240 46 L 300 46"
+                fill="none" stroke="#3AAA35" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity=".2"/>
+          <path id="t-trav" d="M 34 178 L 84 178 L 84 126 L 160 126 L 160 82 L 240 82 L 240 46 L 300 46"
+                fill="none" stroke="#3AAA35" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle id="t-halo" cx="34" cy="178" r="18" fill="#3AAA35" opacity=".12"/>
+          <g id="t-bike"><circle cx="0" cy="0" r="8" fill="#3AAA35" stroke="#fff" stroke-width="2.5"/>
+            <path d="M-3 1.2 L0 -3.4 L3 1.2 Z" fill="#fff"/></g>
+          <g><circle cx="300" cy="46" r="6.5" fill="#F7941D" stroke="#fff" stroke-width="2.5"/></g>
+          <text x="92" y="120" font-size="9" fill="#9a9a9a" font-family="Inter,sans-serif">Main Mall</text>
+          <text x="166" y="76" font-size="9" fill="#9a9a9a" font-family="Inter,sans-serif">Rail Park</text>
+          <text x="248" y="40" font-size="9" fill="#9a9a9a" font-family="Inter,sans-serif">Block 9</text>
+        </svg>
+      </div>
+
+      <div class="seg small" id="t-scene">
+        <span class="on" data-s="normal">On the way</span>
+        <span data-s="traffic">Held up</span>
+        <span data-s="door">At the gate</span>
+        <span data-s="done">Handed over</span>
+      </div>
+
+      <div class="rider"><i>&#128757;</i><div><b>Kabelo M.</b><small id="t-rstate">On the way to you</small></div><em>Call</em></div>
+      <div class="where">
+        <b>Plot 22418, Block 9</b>
+        <small>Blue gate opposite the primary school. Ring the bell, the gate is usually locked.</small>
+      </div>
+      <div style="height:26px"></div>
+    </section>
+
+    <!-- ================= OPS ================= -->
+    <section class="screen" id="s-ops">
+      <div class="eyebrow">Do this now</div>
+      <h1 style="font-size:22px;letter-spacing:-.4px;margin-bottom:10px">Ring Amo about SC-4417.
+        Picked up 70 minutes ago, 25 over, going to Mogoditshane.</h1>
+      <p class="sub">One order, one person, one place. A board that opens with revenue teaches people
+        to scroll past the order that is costing money right now.</p>
+
+      <h2>Stuck, worst first</h2>
+      <div id="ops-stuck"></div>
+
+      <h2>Per rider</h2>
+      <p class="sub">Failures split by whose fault. A rider who takes the hard addresses will have more
+        that are not theirs, and punishing that is how you lose them.</p>
+      <div id="ops-riders"></div>
+
+      <h2>Per merchant</h2>
+      <div class="note bad"><b>A grocer</b><br>3 orders, 67 percent failed, costing Sprint P30.00 in
+        wasted trips. This is the shop quietly costing money.</div>
+
+      <h2>The leak</h2>
+      <div class="money" style="border-top:none;padding-top:0">
+        <div><span>Rider fault, 1 order</span><b>P105.00</b></div>
+        <div><span>Shop fault, 2 orders</span><b>P0.00</b></div>
+        <p>The rider failure carried perishable goods plus the fee. The shop failures carried nothing,
+           because the shop simply was not paid.</p>
+      </div>
+
+      <div class="note plain"><b>What this board cannot show.</b> No rider positions, because no Sprint
+        site has a coordinate. No per customer history, so the quietly shrinking customer cannot be
+        found. No measured cost per delivery, so margin here is fees against wasted trips only.</div>
+      <div style="height:20px"></div>
+    </section>
+
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-s="home"><i>&#9776;</i>Home</button>
+    <button class="tab" data-s="shop"><i>&#128717;</i>Shop<span class="pip" id="pip" hidden></span></button>
+    <button class="tab" data-s="counter"><i>&#128438;</i>Counter</button>
+    <button class="tab" data-s="order"><i>&#128230;</i>Order</button>
+    <button class="tab" data-s="track"><i>&#128205;</i>Track</button>
+    <button class="tab" data-s="ops"><i>&#9678;</i>Ops</button>
+  </div>
+ </div>
+</div>
+<p class="pub-foot" style="max-width:392px;margin:16px auto 0;font:11.5px/1.6 Inter,sans-serif;color:#7a7a7a;text-align:center">Shop names and products appear here to show how the app works. They are not a claim that Sprint Couriers has an agreement with any of them. Prices shown against a shop are that shop's own shelf prices. No real customer, rider or order is on this page.</p>
+
+<script src="engine.bundle.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var E = window.Engine || null;
+
+  /* =========================================================================
+     THE ONE BASKET
+     Every screen below reads this object. Nothing keeps a second copy of it,
+     which is the whole point: the counter packs what the customer picked.
+     ========================================================================= */
+  var SHOP = {
+    id:21, name:'Clicks Pharmacy', category:'Pharmacy',
+    where:'Clicks Game City, Game City Mall, Kgale View, Gaborone',
+    person:'Lesego', till:'71 000 000',
+    min:5000, fee:1500
+  };
+  var MENU = [
+    {id:2101, name:'Panado Paracetamol Tablets 50s', desc:'For mild to moderate pain relief', thebe:3590},
+    {id:2102, name:'Elastoplast Fabric Plasters 20s', desc:'Breathable wound protection', thebe:2250}
+  ];
+
+  var basket = {
+    q:{}, shopId:null, ref:null,
+    add:function(p){
+      if(this.shopId === null){ this.shopId = SHOP.id; this.ref = 'SC-4417'; }
+      this.q[p.id] = (this.q[p.id]||0)+1; changed();
+    },
+    less:function(p){
+      var n = this.q[p.id]||0;
+      if(n <= 1){ delete this.q[p.id]; } else { this.q[p.id] = n-1; }
+      if(this.count() === 0){ this.shopId = null; this.ref = null; }
+      changed();
+    },
+    rows:function(){
+      var out = [];
+      MENU.forEach(function(p){ if(basket.q[p.id]) out.push({p:p,n:basket.q[p.id]}); });
+      return out;
+    },
+    count:function(){ var t=0; for(var k in this.q) t += this.q[k]; return t; },
+    goods:function(){ var t=0; this.rows().forEach(function(r){ t += r.p.thebe*r.n; }); return t; },
+    clear:function(){ this.q = {}; this.shopId = null; this.ref = null; changed(); }
+  };
+  basket.add(MENU[0]);   /* the demo opens mid life, with one thing already picked */
+
+  function P(t){ return 'P' + (t/100).toFixed(2); }
+  function total(){ return basket.goods() + SHOP.fee; }
+  function short(){ return Math.max(0, SHOP.min - basket.goods()); }
+
+  /* one redraw for every screen that reads the basket */
+  function changed(){ try{ drawShop(); drawPay(); cDraw(); drawHomeBasket(); drawPip(); }catch(e){} }
+
+  /* ---------- navigation ---------- */
+  function show(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.screen'), function(s){ s.className = 'screen' + (s.id === 's-' + name ? ' on' : ''); });
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function(t){ t.className = 'tab' + (t.getAttribute('data-s') === name ? ' on' : ''); });
+    $('scroll').scrollTop = 0;
+  }
+  $('tabs').onclick = function(e){ var t = e.target.closest('.tab'); if (t && t.getAttribute('data-s')) show(t.getAttribute('data-s')); };
+  function drawPip(){
+    var p = $('pip'), n = basket.count();
+    p.hidden = n === 0; p.textContent = n;
+  }
+
+  /* ---------- home ---------- */
+  $('cats').innerHTML = [['&#128138;','Pharmacy'],['&#128722;','Groceries'],['&#127860;','Takeout'],
+                         ['&#127863;','Liquor'],['&#128230;','Parcels']].map(function(c){
+    return '<div class="cat"><i>' + c[0] + '</i><span>' + c[1] + '</span></div>';
+  }).join('');
+  var DELIVER = [
+    {i:'&#128138;', bg:'#eaf4e9', name:'Clicks Pharmacy', where:'Game City, 45 min',
+     fee:'<cite title="merchants_database.json, DeliveryFeeBWP 15">P15.00</cite>', go:'shop'},
+    {i:'&#128722;', bg:'#e9eef6', name:'Choppies', where:'no branch address in the data', fee:null},
+    {i:'&#127860;', bg:'#f6ede3', name:"Nando's", where:'Square Mart Mall, CBD', fee:'<cite title="merchants_database.json, DeliveryFeeBWP 15">P15.00</cite>'}
+  ];
+  var COLLECT = [
+    {i:'&#127974;', bg:'#eaf4e9', name:'Main Mall office', where:'Plot 181, Queens Road', fee:'open'},
+    {i:'&#127974;', bg:'#eaf4e9', name:'Rail Park office', where:'Rail Park Mall, Unit G69', fee:'open'},
+    {i:'&#127974;', bg:'#eaf4e9', name:'Mogoditshane office', where:'Bodiba Mall, Unit 10', fee:'open'}
+  ];
+  function drawShops(list){
+    $('shops').innerHTML = list.map(function(s, i){
+      var right = s.fee === null ? '<em class="tbc">fee to confirm</em>' : '<em>' + s.fee + '</em>';
+      return '<div class="shop" data-i="' + i + '"><i style="background:' + s.bg + '">' + s.i + '</i>' +
+        '<div><b>' + s.name + '</b><small>' + s.where + '</small></div>' + right + '</div>';
+    }).join('');
+  }
+  drawShops(DELIVER);
+  $('shops').onclick = function(e){
+    var r = e.target.closest('.shop'); if (!r) return;
+    var s = (collecting ? COLLECT : DELIVER)[+r.getAttribute('data-i')];
+    if (s && s.go) show('shop');
+  };
+  var collecting = false;
+  $('seg').onclick = function(e){
+    var t = e.target.closest('span'); if (!t) return;
+    Array.prototype.forEach.call($('seg').children, function(x){ x.className = ''; });
+    t.className = 'on';
+    collecting = t.getAttribute('data-k') === 'collect';
+    $('h2').textContent = collecting ? 'Nearest counters' : 'Open now';
+    $('sub').innerHTML = collecting
+      ? 'Offices and service points across Botswana. Addresses from the company profile.'
+      : 'No ratings. Sprint has never collected one. Tap a shop to place an order.';
+    drawShops(collecting ? COLLECT : DELIVER);
+  };
+  function drawHomeBasket(){
+    var n = basket.count();
+    $('h-basket').innerHTML = n === 0 ? '' :
+      '<div class="proof" style="margin:18px 0 0;cursor:pointer" id="h-b">' + n +
+      (n === 1 ? ' item' : ' items') + ' waiting at ' + SHOP.name + ', ' + P(basket.goods()) +
+      ' &#183; ' + basket.ref + '. One shop per basket, because one rider makes one pickup.</div>';
+    var el = $('h-b'); if (el) el.onclick = function(){ show('shop'); };
+  }
+
+  /* ---------- the shop, where the basket is filled ---------- */
+  $('sh-where').textContent = SHOP.where;
+  $('sh-name').textContent = SHOP.name;
+  $('sh-terms').innerHTML = 'Minimum ' + P(SHOP.min) + ' &#183; delivery ' + P(SHOP.fee);
+  function drawShop(){
+    $('sh-menu').innerHTML = MENU.map(function(p){
+      var n = basket.q[p.id]||0;
+      return '<div class="item"><div><b>' + p.name + '</b><small>' + p.desc + '</small>' +
+        '<span class="p">' + P(p.thebe) + '</span></div>' +
+        (n ? '<div class="step"><button data-less="' + p.id + '">&#8722;</button><span class="n">' + n +
+             '</span><button data-add="' + p.id + '">+</button></div>'
+           : '<button class="addbtn" data-add="' + p.id + '">Add</button>') + '</div>';
+    }).join('');
+    $('sh-proof').innerHTML = basket.ref
+      ? 'Order ' + basket.ref + '. The counter screen is reading this exact basket, not our menu.'
+      : 'Nothing picked yet, so there is no order number. A number is made when the first item goes in.';
+    var n = basket.count(), s = short();
+    $('sh-msg').innerHTML = n === 0
+      ? 'Minimum ' + P(SHOP.min) + ', delivery ' + P(SHOP.fee)
+      : (s > 0 ? '<span style="color:var(--red)">Add ' + P(s) + ' more to reach the ' + P(SHOP.min) + ' minimum</span>'
+               : P(basket.goods()) + ' goods and ' + P(SHOP.fee) + ' delivery');
+    $('sh-count').textContent = n === 0 ? 'Add something to start' : n + (n === 1 ? ' item' : ' items');
+    $('sh-total').textContent = n === 0 ? '' : P(total());
+    $('sh-go').disabled = (n === 0 || s > 0);
+  }
+  $('sh-menu').onclick = function(e){
+    var b = e.target.closest('[data-add],[data-less]'); if (!b) return;
+    var id = +(b.getAttribute('data-add') || b.getAttribute('data-less'));
+    var p = null; MENU.forEach(function(m){ if (m.id === id) p = m; });
+    if (!p) return;
+    if (b.hasAttribute('data-add')) basket.add(p); else basket.less(p);
+  };
+  $('sh-go').onclick = function(){ show('pay'); };
+
+  /* ---------- pay: four gates, cash change from real Botswana money ---------- */
+  var NOTES = [20000,10000,5000,2000,1000], COINS = [500,200,100,50,25,10,5];
+  function changeFor(t, tender){
+    var left = tender - t, out = [], all = NOTES.concat(COINS);
+    if (left < 0) return null;
+    for (var i=0;i<all.length;i++){ while (left >= all[i]){ out.push(all[i]); left -= all[i]; } }
+    return left === 0 ? out : null;
+  }
+  function piece(t){ return t >= 100 ? 'P' + (t/100) : t + 't'; }
+  var RAILS = [
+    {k:'cash',   t:'Cash',         s:'The rider carries change and leaves the shop with it.'},
+    {k:'card',   t:'Card',         s:'Settles itself. Sprint never holds this money.'},
+    {k:'orange', t:'Orange Money', s:'Paid into the wallet. Sprint pays the shop afterwards.'},
+    {k:'myzaka', t:'MyZaka',       s:'Paid into the wallet. Sprint pays the shop afterwards.'},
+    {k:'smega',  t:'Smega',        s:'Paid into the wallet. Sprint pays the shop afterwards.'}
+  ];
+  var pay = {addr:false, rail:null, tender:null};
+  function drawPay(){
+    $('p-rails').innerHTML = RAILS.map(function(r){
+      return '<div class="row" style="cursor:pointer" data-rail="' + r.k + '"><span class="k' +
+        (pay.rail === r.k ? ' done' : '') + '">' + (pay.rail === r.k ? '&#10003;' : '&#9675;') +
+        '</span><div><b>' + r.t + '</b>' + r.s + '</div></div>';
+    }).join('');
+
+    var c = '';
+    if (pay.rail === 'cash'){
+      c = '<h2>3. What you are paying with</h2><div class="seg small" id="p-tender">' +
+        [10000,20000,15000].map(function(v){
+          return '<span' + (pay.tender === v ? ' class="on"' : '') + ' data-v="' + v + '">' + P(v) + '</span>';
+        }).join('') + '</div>';
+      if (pay.tender !== null){
+        var ch = changeFor(total(), pay.tender);
+        if (ch === null){
+          c += '<div class="note bad">' + (pay.tender < total()
+            ? 'That does not cover ' + P(total()) + '.'
+            : 'The rider cannot make that change exactly. Pick a different amount.') + '</div>';
+        } else if (ch.length === 0){
+          c += '<div class="note good">Exact money. No change needed.</div>';
+        } else {
+          c += '<div class="note good"><b>Change ' + P(pay.tender - total()) + '.</b> The rider leaves the ' +
+               'shop carrying ' + ch.map(piece).join(' + ') + '. Botswana has no P500 note, and nothing ' +
+               'finer than five thebe, so an amount that cannot be made is refused here rather than at the door.</div>';
+        }
+      }
+    }
+    $('p-cash').innerHTML = c;
+    Array.prototype.forEach.call($('p-addr').children, function(x){
+      x.className = (x.getAttribute('data-a') === (pay.addr ? 'yes' : 'no')) ? 'on' : '';
+    });
+
+    $('p-money').innerHTML =
+      '<div><span>Goods</span><b>' + P(basket.goods()) + '</b></div>' +
+      '<div><span>Delivery</span><b>' + P(SHOP.fee) + '</b></div>' +
+      '<div style="font-size:15px;color:#111"><b>Total</b><b>' + P(total()) + '</b></div>';
+
+    var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
+    var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk;
+    $('p-why').textContent = basket.count() === 0 ? 'Your basket is empty'
+      : !pay.addr ? 'Confirm the address first'
+      : !pay.rail ? 'Choose how you pay'
+      : !cashOk ? 'Pick an amount the rider can change'
+      : 'Place the order';
+    $('p-total').textContent = P(total());
+    $('p-place').disabled = !ready;
+  }
+  $('p-addr').onclick = function(e){
+    var t = e.target.closest('span'); if (!t) return;
+    pay.addr = t.getAttribute('data-a') === 'yes'; drawPay();
+  };
+  $('p-rails').onclick = function(e){
+    var r = e.target.closest('[data-rail]'); if (!r) return;
+    pay.rail = r.getAttribute('data-rail'); pay.tender = null; drawPay();
+  };
+  $('p-cash').onclick = function(e){
+    var t = e.target.closest('[data-v]'); if (!t) return;
+    pay.tender = +t.getAttribute('data-v'); drawPay();
+  };
+  $('p-place').onclick = function(){
+    ORDER.goods = basket.goods();
+    ORDER.rail = pay.rail || 'myzaka';
+    oReset(HAPPY); show('order');
+  };
+
+  /* ---------- the counter, on brick 32's rules, reading the SAME basket ---------- */
+  var ACCEPT = 120, GIVE_UP = 600;
+  var TILLS = {
+    on:    {silent:false, person:SHOP.person, phone:SHOP.till, quiet:null},
+    quiet: {silent:true,  person:SHOP.person, phone:SHOP.till, quiet:40},
+    boxed: {silent:true,  person:null,        phone:null,      quiet:null}
+  };
+  var till = 'on', gone = 30, accepted = false;
+  function mmss(n){ var m = Math.floor(n/60), s = n%60; return m + ':' + (s<10?'0':'') + s; }
+  function cState(t, secs){
+    if (t.silent) return 'silent';
+    if (secs >= GIVE_UP) return 'given_up';
+    if (secs >= ACCEPT) return 'late';
+    return 'waiting';
+  }
+  function cDraw(){
+    $('c-shop').textContent = SHOP.name + ', Game City';
+    var rows = basket.rows();
+
+    /* nothing sent is drawn honestly, never as a fake order */
+    if (rows.length === 0){
+      $('c-title').textContent = 'Nothing on the counter';
+      $('c-big').className = 'big'; $('c-big').textContent = 'Waiting';
+      $('c-under').innerHTML = 'No order has been sent to this shop. Add something on the Shop tab and ' +
+        'it lands here with two minutes on the clock.';
+      $('c-pickhead').textContent = 'Pick';
+      $('c-pick').innerHTML = '';
+      $('c-proof').innerHTML = 'This is the truthful empty state. An earlier build drew the shop&#8217;s whole ' +
+        'menu here, every line marked 1x, which is how a bag gets packed wrong.';
+      $('c-accept').disabled = true;
+      return;
+    }
+
+    var t = TILLS[till], st = cState(t, gone), big = $('c-big'), under = $('c-under');
+    var who = t.person || 'the counter';
+    $('c-title').textContent = 'New order';
+    if (accepted){
+      big.className = 'big green'; big.textContent = 'Accepted';
+      under.innerHTML = 'Kabelo is on his way to collect it.';
+    } else if (st === 'waiting'){
+      big.className = 'big'; big.textContent = mmss(ACCEPT - gone);
+      under.innerHTML = 'to accept. The printer sounds until somebody touches it.';
+    } else if (st === 'silent'){
+      big.className = 'big amber'; big.textContent = t.quiet ? 'Quiet ' + t.quiet + ' min' : 'Never on';
+      under.innerHTML = '<b>This is the device, not the shop.</b> ' + (t.phone
+        ? 'They probably never saw it. Ring ' + t.person + ' on ' + t.phone + ' and read it out.'
+        : 'Nobody has given a number for this shop, so there is no way to reach them.');
+    } else if (st === 'late'){
+      big.className = 'big amber'; big.textContent = Math.floor(gone/60) + ' min';
+      under.innerHTML = 'and not accepted. Past the two minutes. <b>Ring ' + who + '.</b>';
+    } else {
+      big.className = 'big red'; big.textContent = Math.floor(gone/60) + ' min';
+      under.innerHTML = '<b>Time is up.</b> A person tells the customer now. Nothing cancels itself.';
+    }
+
+    $('c-pickhead').textContent = 'Pick, ' + basket.count() + (basket.count() === 1 ? ' item' : ' items');
+    $('c-pick').innerHTML = rows.map(function(r){
+      return '<div class="row"><span class="k">' + r.n + '</span><div><b>' + r.p.name + '</b>' +
+        r.p.desc + '</div><span class="amt">' + P(r.p.thebe * r.n) + '</span></div>';
+    }).join('') +
+    '<div class="row"><span class="k"></span><div><b>Goods</b>delivery is charged to the customer by ' +
+    'Sprint and is not this shop&#8217;s money</div><span class="amt">' + P(basket.goods()) + '</span></div>';
+    $('c-proof').innerHTML = 'Order ' + basket.ref + '. Every line here came from the customer&#8217;s basket. ' +
+      'Change it on the Shop tab and this list changes with it.';
+
+    var ring = t.phone ? 'ring ' + who + ' on ' + t.phone : 'ring the shop';
+    var L = [[0,'The printer sounds until somebody touches it'],[120,'It sounds again, louder'],
+             [240,'The office will ' + ring],[420,'Offered to another shop, customer told'],
+             [600,'A person tells the customer plainly']];
+    $('c-ladder').innerHTML = L.map(function(r){
+      var live = !accepted && gone >= r[0];
+      return '<div class="row' + (live ? '' : ' dim') + '"><span class="k' + (live ? ' done' : '') + '">' +
+        (r[0] ? Math.round(r[0]/60) + 'm' : 'now') + '</span><div>' + r[1] + '</div></div>';
+    }).join('');
+    $('c-accept').disabled = accepted || st === 'silent' || st === 'given_up';
+  }
+  function segPick(id, attr, cb){
+    $(id).onclick = function(e){
+      var t = e.target.closest('span'); if (!t) return;
+      Array.prototype.forEach.call($(id).children, function(x){ x.className = ''; });
+      t.className = 'on'; cb(t.getAttribute(attr)); cDraw();
+    };
+  }
+  segPick('c-till', 'data-t', function(v){ till = v; });
+  segPick('c-gone', 'data-g', function(v){ gone = +v; });
+  $('c-accept').onclick = function(){ accepted = true; cDraw(); };
+
+  /* ---------- the order, through the real engine, on the real basket ---------- */
+  var ORDER = { order_id:'SC-4417', merchant_id:'m2', merchant_name:SHOP.name,
+                goods:basket.goods(), delivery_fee:SHOP.fee, rail:'myzaka',
+                fault:'none', delivered:false, perishable:true };
+  var HAPPY = [
+    ['pay_succeeded','system','Naledi pays'],
+    ['offer_to_riders','system','Sent to riders nearby'],
+    ['rider_accepted','courier','Kabelo takes it'],
+    ['rider_arrived_at_shop','courier','At the counter'],
+    ['collected','courier','Sealed and collected'],
+    ['arrived','courier','At the blue gate'],
+    ['handed_over','courier','ID shown, code given, parcel photographed'],
+    ['close','system','Closed, money moves']
+  ];
+  var STOCK = [
+    ['pay_succeeded','system','Naledi pays'],
+    ['offer_to_riders','system','Sent to riders nearby'],
+    ['rider_accepted','courier','Kabelo takes it'],
+    ['rider_arrived_at_shop','courier','At the counter'],
+    ['out_of_stock','merchant','The pharmacy does not have it', 'merchant'],
+    ['cancel_order','ops','Cancelled rather than leaving her waiting', 'merchant'],
+    ['refunded','system','Naledi refunded', 'merchant']
+  ];
+  var ABSENT = [
+    ['pay_succeeded','system','Naledi pays'],
+    ['offer_to_riders','system','Sent to riders nearby'],
+    ['rider_accepted','courier','Kabelo takes it'],
+    ['rider_arrived_at_shop','courier','At the counter'],
+    ['collected','courier','Sealed and collected'],
+    ['arrived','courier','At the blue gate'],
+    ['nobody_there','courier','Nobody answers', 'customer'],
+    ['wait_expired','courier','Five minutes, cannot wait longer', 'customer'],
+    ['back_at_merchant','courier','Goods back to the pharmacy', 'customer'],
+    ['settle','ops','Who carries it', 'customer'],
+    ['refunded','system','Settled', 'customer']
+  ];
+  var script = HAPPY, i = 0, state = 'placed', fault = 'none', timer = null;
+
+  function oLog(text, bad){
+    var d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = '<span class="k' + (bad ? '' : ' done') + '">' + (bad ? '&#10005;' : '&#10003;') + '</span><div>' + text + '</div>';
+    $('o-log').appendChild(d);
+  }
+  function oDraw(){
+    var done = state === 'closed';
+    var broken = ['stock_problem','address_problem','customer_absent','rider_failed','returning','returned','refund_due','cancelled'].indexOf(state) >= 0;
+    var big = $('o-big');
+    big.textContent = state.replace(/_/g,' ');
+    big.className = 'big' + (done ? ' green' : (broken ? ' red' : ''));
+    $('o-head').textContent = 'Order ' + (basket.ref || 'SC-4417') + ', from ' + SHOP.name;
+    $('o-under').textContent = basket.count() + (basket.count() === 1 ? ' item' : ' items') + ', ' +
+      P(ORDER.goods) + ' of goods and ' + P(ORDER.delivery_fee) + ' delivery, paid on ' + ORDER.rail + '.';
+
+    var seen = ['paid','dispatch_offered','dispatch_accepted','at_merchant','picked_up','at_door','delivered','closed'].indexOf(state) >= 0;
+    $('o-cust').textContent = done ? 'Delivered' : (broken ? 'Being told' : (seen ? 'Tracking' : 'Waiting'));
+    $('o-cust2').textContent = done ? 'Parcel photo kept 90 days. ID number never stored.' : '';
+    $('o-shop').textContent = state === 'placed' ? 'Nothing yet' : (state === 'stock_problem' ? 'Cannot supply' : (seen ? 'Accepted' : 'Waiting'));
+    $('o-shop2').textContent = 'two minutes to accept';
+    var carrying = ['dispatch_accepted','at_merchant','picked_up','at_door','returning'].indexOf(state) >= 0;
+    $('o-rider').textContent = carrying ? state.replace(/_/g,' ') : (done ? 'Free' : 'Not assigned');
+    $('o-rider2').textContent = carrying ? 'sees five fields, nothing about who she is' : '';
+    $('o-office').textContent = fault === 'none' ? 'Nobody at fault' : 'Fault: ' + fault;
+
+    var m = $('o-money');
+    if ((done || broken) && E){
+      var s;
+      try { s = E.settlement.settleOne(Object.assign({}, ORDER, {fault:fault, delivered: done && fault === 'none'})); }
+      catch (err){ s = null; }
+      if (s){
+        var PU = E.settlement.pula;
+        m.hidden = false;
+        m.innerHTML = '<div><span>To the pharmacy</span><b>' + PU(s.merchant) + '</b></div>' +
+          '<div><span>Cannot be resold</span><b>' + PU(s.perishable_loss) + '</b></div>' +
+          '<div><span>Sprint keeps</span><b>' + PU(s.sprint_fee) + '</b></div>' +
+          '<div><span>Sprint carries</span><b>' + PU(s.sprint_absorbs) + '</b></div>' +
+          '<p>' + s.says + '</p>';
+        $('o-office2').textContent = 'worked out from the fault, nobody read a history';
+      }
+    } else { m.hidden = true; $('o-office2').textContent = ''; }
+  }
+  function oStep(){
+    if (!E){ oLog('engine.bundle.js did not load, so nothing is pretended', true); oStop(); return; }
+    if (i >= script.length){ oStop(); return; }
+    var row = script[i++], ev = row[0], actor = row[1], plain = row[2], f = row[3], move;
+    try { move = E.machine.apply(state, ev, f ? {actor:actor, fault:f} : {actor:actor}); }
+    catch (err){ oLog('<b>' + ev + '</b> refused: ' + err.message, true); oStop(); return; }
+    state = move.state;
+    if (move.fault && move.fault !== 'none') fault = move.fault;   /* sticky, on purpose */
+    oLog('<b>' + plain + '</b>' + move.says + ', by the ' + move.actor);
+    oDraw();
+    if (i >= script.length) oStop();
+  }
+  function oStop(){ clearInterval(timer); timer = null; $('o-run').textContent = i >= script.length ? 'Run again' : 'Run it'; }
+  function oReset(which){
+    oStop(); script = which; i = 0; state = 'placed'; fault = 'none';
+    ORDER.goods = basket.goods();
+    $('o-log').innerHTML = ''; oDraw(); $('o-run').textContent = 'Run it';
+  }
+  function oPlay(which){
+    if (which || i >= script.length) oReset(which || script);
+    if (timer) return;
+    timer = setInterval(oStep, 1300); $('o-run').textContent = 'Running';
+  }
+  $('o-run').onclick    = function(){ oPlay(); };
+  $('o-stock').onclick  = function(){ oPlay(STOCK); };
+  $('o-absent').onclick = function(){ oPlay(ABSENT); };
+  oReset(HAPPY);
+
+  /* ---------- ops ---------- */
+  [{id:'SC-4417',who:'Amo',over:25,cap:45,where:'Mogoditshane'},
+   {id:'SC-4423',who:'nobody',over:6,cap:3,where:'Phakalane'}].forEach(function(o){
+    var d = document.createElement('div');
+    d.className = 'note plain';
+    d.innerHTML = '<b>' + o.id + '</b>, ' + o.over + ' minutes over. With ' + o.who + ', going to ' +
+      o.where + '.<div class="meter"><i style="width:' + Math.min(100, Math.round(o.over/o.cap*100)) + '%"></i></div>';
+    $('ops-stuck').appendChild(d);
+  });
+  $('ops-riders').innerHTML = [{n:'Amo',d:1,own:1,other:1},{n:'Kabelo',d:1,own:0,other:1}].map(function(r){
+    return '<div class="row"><span class="k">' + r.d + '</span><div><b>' + r.n + '</b>' +
+      (r.own ? r.own + ' their own fault' : 'none their own fault') + ' &#183; ' + r.other +
+      ' not their fault</div></div>';
+  }).join('');
+
+  /* ---------- tracking: the window widens, it never slides ---------- */
+  (function(){
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(n,a){ var e = document.createElementNS(ns,n); for (var k in a) e.setAttribute(k,a[k]); return e; }
+    var bb = $('t-blocks'), br = $('t-roads'), sd = 13;
+    function rnd(){ sd = (sd*16807)%2147483647; return sd/2147483647; }
+    for (var y=6; y<206; y+=28){ for (var x=6; x<336; x+=36){
+      bb.appendChild(el('rect',{x:x,y:y,width:(20+rnd()*10).toFixed(1),height:(15+rnd()*7).toFixed(1),rx:3,fill:'#f0f0ee'}));
+    }}
+    [34,84,160,240,300].forEach(function(x){ br.appendChild(el('line',{x1:x,y1:0,x2:x,y2:210,stroke:'#e6e6e3','stroke-width':6})); });
+    [46,82,126,178].forEach(function(y){ br.appendChild(el('line',{x1:0,y1:y,x2:340,y2:y,stroke:'#e6e6e3','stroke-width':6})); });
+
+    var SCENES = {
+      normal:  {at:0.42, big:'10:42 to 10:52', cls:'',       under:'Arriving between. Nine in ten land inside this window.', rider:'On the way to you'},
+      traffic: {at:0.54, big:'10:42 to 11:06', cls:' amber', under:'Held up on Western Bypass. The earliest time has not moved, only the far edge has.', rider:'Held up, still coming'},
+      door:    {at:0.985,big:'Right now',      cls:'',       under:'Kabelo is at your gate. He waits five minutes.', rider:'At your gate'},
+      done:    {at:1,    big:'10:47',          cls:' green', under:'Handed to you and photographed at the door. The photo is kept 90 days, never a photo of a person.', rider:'Delivered'}
+    };
+    var route = $('t-route'), bike = $('t-bike'), halo = $('t-halo'), trav = $('t-trav');
+    var L = route.getTotalLength(), pos = 0.02, target = SCENES.normal.at;
+    trav.setAttribute('stroke-dasharray', L);
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function place(){
+      var p = route.getPointAtLength(L*pos), q = route.getPointAtLength(Math.min(L, L*pos+5));
+      var a = Math.atan2(q.y-p.y, q.x-p.x)*180/Math.PI + 90;
+      bike.setAttribute('transform','translate('+p.x.toFixed(2)+','+p.y.toFixed(2)+') rotate('+a.toFixed(1)+')');
+      halo.setAttribute('cx',p.x.toFixed(2)); halo.setAttribute('cy',p.y.toFixed(2));
+      trav.setAttribute('stroke-dashoffset',(L*(1-pos)).toFixed(1));
+    }
+    function advance(){ if (Math.abs(target-pos) < 0.0004){ pos = target; place(); return; } pos += (target-pos)*0.035; place(); }
+    function paint(k){
+      var sc = SCENES[k];
+      $('t-big').className = 'big' + sc.cls; $('t-big').textContent = sc.big;
+      $('t-under').textContent = sc.under; $('t-rstate').textContent = sc.rider;
+      target = sc.at; if (k === 'normal') pos = 0.02; if (still) pos = target; place();
+    }
+    $('t-scene').onclick = function(e){
+      var t = e.target.closest('span'); if (!t) return;
+      Array.prototype.forEach.call($('t-scene').children, function(x){ x.className = ''; });
+      t.className = 'on'; paint(t.getAttribute('data-s'));
+    };
+    paint('normal');
+    /* a frame loop for smoothness and a plain timer so a background tab still gets the rider there */
+    if (!still){ (function f(){ advance(); requestAnimationFrame(f); })(); setInterval(advance, 220); }
+  })();
+
+  function tick(){
+    var d = new Date();
+    $('clock').textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    $('t-head').textContent = 'Order ' + (basket.ref || 'SC-4417');
+  }
+  tick(); setInterval(tick, 20000);
+
+  changed();
+})();
+</script>
