@@ -517,6 +517,11 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   }
   function saving(){ return Math.max(0, separateFees() - deliveryFee()); }
 
+  /* Declared HERE, above the first basket.add, because that add calls changed(),
+     which draws the group card. A var is hoisted but its VALUE is not, so
+     declaring it further down left it undefined at first draw and the whole
+     first render died silently after the shop list. */
+  var group = { open:false, people:[] };
   basket.add(MENU[0]);   /* the demo opens mid life, with one thing already picked */
 
   function P(t){ return 'P' + (t/100).toFixed(2); }
@@ -524,7 +529,15 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   function short(){ return Math.max(0, SHOP.min - basket.goodsIn(SHOP.id)); }
 
   /* one redraw for every screen that reads the basket */
-  function changed(){ try{ drawShop(); drawPay(); cDraw(); drawHomeBasket(); drawPip(); }catch(e){} }
+  /* A bare catch here hid every render fault in this app for hours: the screen
+     went blank, the console stayed clean, and there was nothing to debug. It now
+     says which draw failed and why, and keeps drawing the rest. */
+  function changed(){
+    [['drawShop',drawShop],['drawPay',drawPay],['cDraw',cDraw],
+     ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip]].forEach(function(p){
+      try { p[1](); } catch(e){ console.error('render failed in ' + p[0] + ': ' + e.message); }
+    });
+  }
 
   /* ---------- navigation ---------- */
   function show(name){
@@ -598,7 +611,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     for (var k in SHOPS) if (SHOPS[k].name === picked.name) match = SHOPS[k];
     if (!match) return;
     SHOP = match; MENU = MENUS[match.id];
-    drawShopHeader(); changed();
+    drawShopHeader(); drawShop(); changed();
     show('shop');
   };
   var collecting = false;
@@ -618,7 +631,6 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
      adds their own food from whichever shop they want. In Botswana this is
      stronger than anywhere else, because WhatsApp IS the family group and the
      link opens without anybody installing anything. */
-  var group = { open:false, people:[] };
   var GUESTS = [
     {who:'Thato', shop:7,  item:701,  said:'Thato added Streetwise Two from KFC'},
     {who:'Mama', shop:21, item:2101, said:'Mama added Panado from Clicks'},
@@ -688,15 +700,22 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   /* ---------- the shop, where the basket is filled ---------- */
   $('sh-where').textContent = SHOP.where;
   $('sh-name').textContent = SHOP.name;
+  var NOTES = {
+    21:'Over the counter items only. Prescription medicines are not available for delivery yet.',
+    7:'Hot food. Collected last so it reaches you hot.',
+    1:'Hot food. Collected last so it reaches you hot.',
+    13:'Groceries. Collected first, because they travel better than a burger does.'
+  };
   function drawShopHeader(){
     $('sh-name').textContent = SHOP.name;
+    if ($('sh-note')) $('sh-note').textContent = NOTES[SHOP.id] || '';
     $('sh-terms').innerHTML = 'Minimum ' + P(SHOP.min) + ' &#183; delivery ' + P(SHOP.fee)
       + (basket.shops().length > 1 ? ' &#183; <b style="color:var(--green)">joins your delivery</b>' : '');
   }
   drawShopHeader();
   function drawShop(){
     $('sh-menu').innerHTML = MENU.map(function(p){
-      var n = basket.q[p.id]||0;
+      var n = (basket.groups[SHOP.id]||{})[p.id]||0;
       return '<div class="item"><div><b>' + p.name + '</b><small>' + p.desc + '</small>' +
         '<span class="p">' + P(p.thebe) + '</span></div>' +
         (n ? '<div class="step"><button data-less="' + p.id + '">&#8722;</button><span class="n">' + n +
