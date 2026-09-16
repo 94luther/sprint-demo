@@ -21,7 +21,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // ../api/src/orders/state_machine.ts
+  // engine
   var state_machine_exports = {};
   __export(state_machine_exports, {
     STATES: () => STATES,
@@ -131,7 +131,7 @@
   }
   var STATES, TRANSITIONS, TransitionError;
   var init_state_machine = __esm({
-    "../api/src/orders/state_machine.ts"() {
+    "engine"() {
       STATES = {
         placed: { terminal: false, stuckAfterMinutes: 10, customerWaiting: true, says: "Order placed, payment not settled yet" },
         payment_failed: { terminal: false, stuckAfterMinutes: 60, customerWaiting: true, says: "Payment did not go through" },
@@ -218,7 +218,7 @@
     }
   });
 
-  // ../api/src/orders/settlement.ts
+  // engine
   var settlement_exports = {};
   __export(settlement_exports, {
     SettlementError: () => SettlementError,
@@ -348,7 +348,7 @@
   }
   var IN_HAND, WALLET, SettlementError;
   var init_settlement = __esm({
-    "../api/src/orders/settlement.ts"() {
+    "engine"() {
       IN_HAND = ["cash"];
       WALLET = ["orange_money", "myzaka", "smega"];
       SettlementError = class extends Error {
@@ -360,7 +360,7 @@
     }
   });
 
-  // ../api/src/orders/payments.ts
+  // engine
   var payments_exports = {};
   __export(payments_exports, {
     MemoryBook: () => MemoryBook,
@@ -483,7 +483,7 @@
   }
   var THEBE, PaymentError, RAILS, MOVES, MemoryBook, UnconfiguredRail;
   var init_payments = __esm({
-    "../api/src/orders/payments.ts"() {
+    "engine"() {
       THEBE = 100;
       PaymentError = class extends Error {
       };
@@ -590,7 +590,7 @@
     }
   });
 
-  // ../api/src/orders/cash.ts
+  // engine
   var cash_exports = {};
   __export(cash_exports, {
     CASH_CAP_THEBE: () => CASH_CAP_THEBE,
@@ -736,7 +736,7 @@
   }
   var NOTES, THEBE2, CASH_CAP_THEBE, FLOAT_SIGNOFF_THEBE, WRITE_OFF_THEBE, CashError;
   var init_cash = __esm({
-    "../api/src/orders/cash.ts"() {
+    "engine"() {
       NOTES = [2e4, 1e4, 5e3, 2e3, 1e3];
       THEBE2 = 100;
       CASH_CAP_THEBE = 1e5;
@@ -751,7 +751,7 @@
     }
   });
 
-  // ../api/src/catalog/verticals.ts
+  // engine
   var verticals_exports = {};
   __export(verticals_exports, {
     VERTICALS: () => VERTICALS,
@@ -821,7 +821,7 @@
   }
   var VERTICALS;
   var init_verticals = __esm({
-    "../api/src/catalog/verticals.ts"() {
+    "engine"() {
       VERTICALS = {
         food: {
           label: "Restaurants",
