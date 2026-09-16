@@ -7,6 +7,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/f966dc01a3f149c6.svg?t="+D
 </script>
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
 <meta name="googlebot" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Sprint, the phone</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -30,6 +31,24 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/f966dc01a3f149c6.svg?t="+D
   .scroll::-webkit-scrollbar{width:0}
   .screen{display:none}
   .screen.on{display:block}
+
+  /* On a real phone the drawn handset is wasted glass. The app takes the whole
+     screen, the way it will when it ships. The fake status bar goes too, because
+     the phone has a real one. Below 560px there is no desktop to frame it for. */
+  @media (max-width:560px){
+    body{display:flex;flex-direction:column;padding:0;background:var(--white);
+         height:100vh;height:100dvh}
+    .pub-banner{flex:none;margin:0;border-radius:0;max-width:none;padding:7px 12px 6px;
+                padding-top:calc(7px + env(safe-area-inset-top))}
+    .pub-foot{display:none}
+    .device{flex:1;min-height:0;max-width:none;border-radius:0;padding:0;box-shadow:none;
+            background:var(--white);display:flex;flex-direction:column}
+    .app{flex:1;min-height:0;height:auto;border-radius:0}
+    .sys{display:none}
+    .scroll{padding-top:calc(18px + env(safe-area-inset-top))}
+    .pub-banner ~ .device .scroll{padding-top:18px}
+    .tabs{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  }
 
   .addr{font-size:13px;color:var(--sub);display:flex;align-items:center;gap:6px}
   .addr svg{width:11px;height:11px}
@@ -165,7 +184,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/f966dc01a3f149c6.svg?t="+D
   cite{font-style:normal;cursor:help}
 </style>
 
-<div style="max-width:392px;margin:0 auto 14px;font:600 11.5px Inter,sans-serif;color:#7a4a08;background:#fef0dc;border-radius:14px;padding:10px 14px;line-height:1.5;text-align:center">Example data. This is a working prototype, not the live Sprint system.</div>
+<div class="pub-banner" style="max-width:392px;margin:0 auto 14px;font:600 11.5px Inter,sans-serif;color:#7a4a08;background:#fef0dc;border-radius:14px;padding:10px 14px;line-height:1.5;text-align:center">Example data. This is a working prototype, not the live Sprint system.</div>
 <div class="device">
  <div class="app">
   <div class="sys"><span id="clock">10:34</span><span>&#9679;&#9679;&#9679;</span></div>
@@ -380,7 +399,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/f966dc01a3f149c6.svg?t="+D
   </div>
  </div>
 </div>
-<p style="max-width:392px;margin:16px auto 0;font:11.5px/1.6 Inter,sans-serif;color:#7a7a7a;text-align:center">Shop names and products appear here to show how the app works. They are not a claim that Sprint Couriers has an agreement with any of them. Prices shown against a shop are that shop's own shelf prices. No real customer, rider or order is on this page.</p>
+<p class="pub-foot" style="max-width:392px;margin:16px auto 0;font:11.5px/1.6 Inter,sans-serif;color:#7a7a7a;text-align:center">Shop names and products appear here to show how the app works. They are not a claim that Sprint Couriers has an agreement with any of them. Prices shown against a shop are that shop's own shelf prices. No real customer, rider or order is on this page.</p>
 
 <script src="engine.bundle.js"></script>
 <script>
