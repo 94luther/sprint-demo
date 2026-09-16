@@ -18,30 +18,28 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  /* No drawn handset, at any width. On a laptop the app stands as a single column
+  /* Full bleed: the page IS the app, at any width. On a laptop the app stands as a single column
      on the page ground, the way Sprint OS opens; on a phone it is the whole screen.
      The dark bezel, the rounded glass and the fake status bar are gone for good:
      Luther wants to see what a customer will see, not a picture of a phone. */
-  body{margin:0;background:var(--ground);display:flex;flex-direction:column;align-items:center;
+  body{margin:0;background:var(--white);display:flex;flex-direction:column;
        padding:0;height:100vh;height:100dvh;
        font:15px/1.5 Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);
        -webkit-font-smoothing:antialiased}
   .pub-banner{flex:none;width:100%;max-width:430px;margin:0 !important;border-radius:0 !important;
               font-size:11px !important;padding:6px 12px !important;line-height:1.4 !important}
   .pub-foot{display:none !important}
-  .device{flex:1;min-height:0;width:100%;max-width:430px;background:var(--white);
+  .device{flex:1;min-height:0;width:100%;background:var(--white);
           display:flex;flex-direction:column}
   .app{flex:1;min-height:0;background:var(--white);overflow:hidden;
        display:flex;flex-direction:column;min-width:0}
   .sys{display:none}
   .scroll{flex:1;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:22px 24px 0}
   .scroll::-webkit-scrollbar{width:0}
-  .screen{display:none}
+  .screen{display:none;max-width:600px;margin:0 auto}
   .screen.on{display:block}
 
   @media (max-width:560px){
-    body{background:var(--white)}
-    .pub-banner,.device{max-width:none}
     .pub-banner{padding-top:calc(6px + env(safe-area-inset-top)) !important}
     .scroll{padding-top:calc(18px + env(safe-area-inset-top))}
     .pub-banner ~ .device .scroll{padding-top:18px}
@@ -171,8 +169,8 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   .where b{display:block;font-size:14px;font-weight:600}
   .where small{display:block;font-size:12.5px;color:var(--sub);margin-top:3px;line-height:1.5}
 
-  .tabs{display:flex;padding:12px 4px 16px;border-top:1px solid var(--hair);background:var(--white)}
-  .tab{flex:1;text-align:center;font-size:10px;color:var(--faint);cursor:pointer;border:none;
+  .tabs{display:flex;justify-content:center;padding:12px 4px 16px;border-top:1px solid var(--hair);background:var(--white)}
+  .tab{flex:1 1 0;max-width:112px;text-align:center;font-size:10px;color:var(--faint);cursor:pointer;border:none;
        background:none;font-family:inherit;padding:0 1px;position:relative}
   .tab i{display:block;font-style:normal;font-size:18px;margin-bottom:3px;opacity:.45}
   .tab.on{color:var(--ink);font-weight:600}
@@ -182,7 +180,6 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   cite{font-style:normal;cursor:help}
 </style>
 
-<div class="pub-banner" style="max-width:392px;margin:0 auto 14px;font:600 11.5px Inter,sans-serif;color:#7a4a08;background:#fef0dc;border-radius:14px;padding:10px 14px;line-height:1.5;text-align:center">Example data. This is a working prototype, not the live Sprint system.</div>
 <div class="device">
  <div class="app">
   <div class="sys"><span id="clock">10:34</span><span>&#9679;&#9679;&#9679;</span></div>
@@ -397,7 +394,6 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   </div>
  </div>
 </div>
-<p class="pub-foot" style="max-width:392px;margin:16px auto 0;font:11.5px/1.6 Inter,sans-serif;color:#7a7a7a;text-align:center">Shop names and products appear here to show how the app works. They are not a claim that Sprint Couriers has an agreement with any of them. Prices shown against a shop are that shop's own shelf prices. No real customer, rider or order is on this page.</p>
 
 <script src="engine.bundle.js"></script>
 <script>
