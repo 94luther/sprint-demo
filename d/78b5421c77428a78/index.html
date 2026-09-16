@@ -68,6 +68,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   .cat i{display:grid;place-items:center;width:64px;height:64px;border-radius:20px;background:var(--wash);
          font-style:normal;font-size:24px;margin-bottom:8px}
   .cat span{font-size:12px;color:var(--sub)}
+  /* a picked category has to be obvious at a glance, so the tile fills and the
+     word goes dark rather than relying on a thin outline */
+  .cat.on i{background:var(--green);color:#fff}
+  .cat.on span{color:var(--ink);font-weight:600}
 
   h2{margin:34px 0 4px;font-size:18px;font-weight:600;letter-spacing:-.3px}
   .sub{font-size:12.5px;color:var(--faint);margin:0 0 16px;line-height:1.5}
@@ -81,6 +85,8 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   .shop em{margin-left:auto;font-style:normal;font-size:13px;font-weight:600;white-space:nowrap;
            font-variant-numeric:tabular-nums}
   .shop em.tbc{color:var(--faint);font-weight:500;font-size:12px}
+  /* the delivery time sits under the fee, quieter, so the money reads first */
+  .shop em small{display:block;font-weight:500;font-size:11px;color:var(--faint);margin-top:2px}
 
   .send{margin:30px 0 26px;padding:18px 20px;border:1px solid var(--hair);border-radius:20px}
   .send b{display:block;font-size:15px;font-weight:600}
@@ -460,32 +466,57 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   }
 
   /* ---------- home ---------- */
-  $('cats').innerHTML = [['&#128138;','Pharmacy'],['&#128722;','Groceries'],['&#127860;','Takeout'],
-                         ['&#127863;','Liquor'],['&#128230;','Parcels']].map(function(c){
-    return '<div class="cat"><i>' + c[0] + '</i><span>' + c[1] + '</span></div>';
+  /* 31 merchants, read out of assets/partner_data/merchants_database.json: real
+     names, real categories, real delivery fees, real estimated times. The demo
+     used to show three, one of which said "no branch address in the data", which
+     made a working list look like a broken one. */
+  var MERCHANTS = [{"i":"&#127860;","bg":"#f6ede3","name":"Nando's","cat":"Restaurants","hub":"CBD","est":"30-45 mins","fee":15,"min":50,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"RocoMamas","cat":"Restaurants","hub":"The Fields Mall","est":"35-50 mins","fee":15,"min":80,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Roman's Pizza","cat":"Restaurants","hub":"Phase 2","est":"25-40 mins","fee":12,"min":60,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Steers","cat":"Restaurants","hub":"Riverwalk","est":"25-40 mins","fee":12,"min":50,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Debonairs","cat":"Restaurants","hub":"Main Mall","est":"30-45 mins","fee":12,"min":60,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Mozambik","cat":"Restaurants","hub":"The Fields Mall","est":"40-55 mins","fee":20,"min":100,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"KFC","cat":"Restaurants","hub":"BBS Mall","est":"20-35 mins","fee":10,"min":40,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Chicken Licken","cat":"Restaurants","hub":"Game City","est":"20-35 mins","fee":10,"min":40,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Ocean Basket","cat":"Restaurants","hub":"Airport Junction","est":"35-50 mins","fee":18,"min":90,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Wimpy","cat":"Restaurants","hub":"Game City","est":"25-40 mins","fee":12,"min":50,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Barcelos","cat":"Restaurants","hub":"Rail Park Mall","est":"30-45 mins","fee":12,"min":50,"go":null},{"i":"&#127860;","bg":"#f6ede3","name":"Burger King","cat":"Restaurants","hub":"Mowana Park","est":"25-40 mins","fee":15,"min":60,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Choppies","cat":"Supermarket","hub":"Westgate","est":"45-60 mins","fee":25,"min":100,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Spar","cat":"Supermarket","hub":"Broadhurst","est":"45-60 mins","fee":25,"min":100,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Pick n Pay","cat":"Supermarket","hub":"Sebele Centre","est":"45-60 mins","fee":30,"min":150,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Checkers","cat":"Supermarket","hub":"Game City","est":"45-60 mins","fee":30,"min":150,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Woolworths Food","cat":"Supermarket","hub":"Airport Junction","est":"45-60 mins","fee":35,"min":200,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Sefalana","cat":"Supermarket","hub":"Broadhurst Industrial","est":"60-90 mins","fee":40,"min":300,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Food Lover's Market","cat":"Supermarket","hub":"The Fields Mall","est":"45-60 mins","fee":30,"min":150,"go":null},{"i":"&#128722;","bg":"#e9eef6","name":"Square Mart","cat":"Supermarket","hub":"CBD","est":"35-50 mins","fee":20,"min":100,"go":null},{"i":"&#128138;","bg":"#eaf4e9","name":"Clicks Pharmacy","cat":"Pharmacy","hub":"Game City","est":"30-45 mins","fee":15,"min":50,"go":"shop"},{"i":"&#128138;","bg":"#eaf4e9","name":"Dis-Chem","cat":"Pharmacy","hub":"Airport Junction","est":"30-45 mins","fee":15,"min":50,"go":null},{"i":"&#128138;","bg":"#eaf4e9","name":"Pharma Lulu","cat":"Pharmacy","hub":"Setlhoa","est":"30-45 mins","fee":15,"min":50,"go":null},{"i":"&#128138;","bg":"#eaf4e9","name":"Botspharm","cat":"Pharmacy","hub":"Main Mall","est":"30-45 mins","fee":12,"min":40,"go":null},{"i":"&#128221;","bg":"#f1eef8","name":"Waltons","cat":"Stationery","hub":"Fairgrounds","est":"45-60 mins","fee":20,"min":80,"go":null},{"i":"&#128221;","bg":"#f1eef8","name":"Typo","cat":"Stationery","hub":"Airport Junction","est":"45-60 mins","fee":20,"min":100,"go":null},{"i":"&#128221;","bg":"#f1eef8","name":"CNA","cat":"Stationery","hub":"Riverwalk","est":"45-60 mins","fee":18,"min":60,"go":null},{"i":"&#128221;","bg":"#f1eef8","name":"Exclusive Books","cat":"Stationery","hub":"Airport Junction","est":"45-60 mins","fee":25,"min":150,"go":null},{"i":"&#128221;","bg":"#f1eef8","name":"PNA","cat":"Stationery","hub":"Game City","est":"45-60 mins","fee":20,"min":80,"go":null},{"i":"&#127863;","bg":"#f8eef0","name":"Liquorama","cat":"Liquor","hub":"Kgomokasitwa","est":"30-45 mins","fee":20,"min":100,"go":null},{"i":"&#127863;","bg":"#f8eef0","name":"TOPS at SPAR","cat":"Liquor","hub":"Broadhurst","est":"30-45 mins","fee":20,"min":100,"go":null}];
+
+  var CATS = [['&#128138;','Pharmacy','Pharmacy'],['&#128722;','Groceries','Supermarket'],
+              ['&#127860;','Takeout','Restaurants'],['&#127863;','Liquor','Liquor'],
+              ['&#128221;','Stationery','Stationery'],['&#128230;','Parcels','Parcels']];
+  var cat = null;
+  $('cats').innerHTML = CATS.map(function(c, i){
+    return '<div class="cat" data-c="' + i + '"><i>' + c[0] + '</i><span>' + c[1] + '</span></div>';
   }).join('');
-  var DELIVER = [
-    {i:'&#128138;', bg:'#eaf4e9', name:'Clicks Pharmacy', where:'Game City, 45 min',
-     fee:'<cite title="merchants_database.json, DeliveryFeeBWP 15">P15.00</cite>', go:'shop'},
-    {i:'&#128722;', bg:'#e9eef6', name:'Choppies', where:'no branch address in the data', fee:null},
-    {i:'&#127860;', bg:'#f6ede3', name:"Nando's", where:'Square Mart Mall, CBD', fee:'<cite title="merchants_database.json, DeliveryFeeBWP 15">P15.00</cite>'}
-  ];
+
   var COLLECT = [
-    {i:'&#127974;', bg:'#eaf4e9', name:'Main Mall office', where:'Plot 181, Queens Road', fee:'open'},
-    {i:'&#127974;', bg:'#eaf4e9', name:'Rail Park office', where:'Rail Park Mall, Unit G69', fee:'open'},
-    {i:'&#127974;', bg:'#eaf4e9', name:'Mogoditshane office', where:'Bodiba Mall, Unit 10', fee:'open'}
+    {i:'&#127974;', bg:'#eaf4e9', name:'Main Mall office', hub:'Plot 181, Queens Road', est:'open', fee:null},
+    {i:'&#127974;', bg:'#eaf4e9', name:'Rail Park office', hub:'Rail Park Mall, Unit G69', est:'open', fee:null},
+    {i:'&#127974;', bg:'#eaf4e9', name:'Mogoditshane office', hub:'Bodiba Mall, Unit 10', est:'open', fee:null}
   ];
+
+  function shown(){
+    if (collecting) return COLLECT;
+    if (!cat) return MERCHANTS;
+    return MERCHANTS.filter(function(m){ return m.cat === cat; });
+  }
   function drawShops(list){
+    if (!list.length){
+      $('shops').innerHTML = '<div class="tbc" style="padding:18px 2px">Nothing in this ' +
+        'category yet. Sprint carries parcels for these, the shop list comes next.</div>';
+      return;
+    }
     $('shops').innerHTML = list.map(function(s, i){
-      var right = s.fee === null ? '<em class="tbc">fee to confirm</em>' : '<em>' + s.fee + '</em>';
+      var right = s.fee === null ? '<em>' + (s.est || '') + '</em>'
+                : '<em>P' + s.fee + '.00<small>' + s.est + '</small></em>';
       return '<div class="shop" data-i="' + i + '"><i style="background:' + s.bg + '">' + s.i + '</i>' +
-        '<div><b>' + s.name + '</b><small>' + s.where + '</small></div>' + right + '</div>';
+        '<div><b>' + s.name + '</b><small>' + s.hub + '</small></div>' + right + '</div>';
     }).join('');
   }
-  drawShops(DELIVER);
+  $('cats').onclick = function(e){
+    var c = e.target.closest('.cat'); if (!c) return;
+    var picked = CATS[+c.getAttribute('data-c')][2];
+    cat = (cat === picked) ? null : picked;
+    Array.prototype.forEach.call($('cats').children, function(x, i){
+      x.className = 'cat' + (CATS[i][2] === cat ? ' on' : '');
+    });
+    drawShops(shown());
+  };
+  drawShops(shown());
   $('shops').onclick = function(e){
     var r = e.target.closest('.shop'); if (!r) return;
-    var s = (collecting ? COLLECT : DELIVER)[+r.getAttribute('data-i')];
+    var s = shown()[+r.getAttribute('data-i')];
     if (s && s.go) show('shop');
   };
   var collecting = false;
@@ -498,7 +529,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
     $('sub').innerHTML = collecting
       ? 'Offices and service points across Botswana. Addresses from the company profile.'
       : 'No ratings. Sprint has never collected one. Tap a shop to place an order.';
-    drawShops(collecting ? COLLECT : DELIVER);
+    drawShops(shown());
   };
   function drawHomeBasket(){
     var n = basket.count();
