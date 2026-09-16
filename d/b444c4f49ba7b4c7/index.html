@@ -83,7 +83,12 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
   /* a merchant identity block: approved logo, or the name set in type. NEVER a photograph. */
   .idblock{position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:7px;
            background:rgba(255,255,255,.95);border-radius:10px;padding:5px 9px;max-width:88%}
-  .idblock img{height:20px;width:auto;max-width:74px;object-fit:contain;display:block}
+  .idblock img{height:22px;width:auto;max-width:96px;object-fit:contain;display:block}
+  .idblock.dark{background:#14100E}
+  .lrow .th .logochip{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+                      background:#fff;border:1px solid rgba(0,0,0,.06);box-sizing:border-box;padding:7px}
+  .lrow .th .logochip.dark{background:#14100E}
+  .lrow .th .logochip img{max-width:100%;max-height:100%;object-fit:contain;display:block}
   .idblock b{font-size:13px;font-weight:800;color:#0E1211;letter-spacing:-.2px;white-space:nowrap;
              overflow:hidden;text-overflow:ellipsis}
   .ph .plate{width:100%;height:100%;background:linear-gradient(135deg,var(--a),var(--b));position:relative}
@@ -816,11 +821,13 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
   function tint(s){ var p = s.tint.split(','); return '--a:' + p[0] + ';--b:' + p[1]; }
 
   function merchantIdentity(s){
-    /* approved logo, else the name in type. Never a photograph. */
-    return '<span class="idblock">' +
-      (s.logoStatus === 'approved-local' && s.logo
-        ? '<img src="' + s.logo + '" alt="' + s.name + '">'
-        : '<b>' + s.name + '</b>') + '</span>';
+    /* the company's own logo, else its name in type. NEVER a photograph.
+       A logo drawn in white ink gets a dark chip, decided by measuring the
+       file (grade-logos.py), not by looking at it. */
+    var ok = (s.logoStatus === 'approved-local' || s.logoStatus === 'official-site') && s.logo;
+    return '<span class="idblock' + (ok && s.onDark ? ' dark' : '') + '">' +
+      (ok ? '<img src="' + s.logo + '" alt="' + s.name + '">'
+          : '<b>' + s.name + '</b>') + '</span>';
   }
   function cover(s){
     /* verified merchant photograph, else a neutral branded panel. Never a
@@ -850,7 +857,11 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
   }
   function listRow(s){
     return '<div class="lrow" data-shop="' + s.id + '"><div class="th">' +
-      ((s.coverStatus === 'verified_official_asset_url' && s.cover) ? '<img src="' + s.cover + '" alt="" loading="lazy">' : '<div class="plate" style="' + tint(s) + '"></div>') +
+      (((s.logoStatus === 'approved-local' || s.logoStatus === 'official-site') && s.logo)
+        ? '<div class="logochip' + (s.onDark ? ' dark' : '') + '"><img src="' + s.logo + '" alt="' + s.name + '"></div>'
+        : ((s.coverStatus === 'verified_official_asset_url' && s.cover)
+            ? '<img src="' + s.cover + '" alt="" loading="lazy">'
+            : '<div class="plate" style="' + tint(s) + '"></div>')) +
       '</div><div class="tx"><b>' + s.name + '</b><small>' + s.cuisine + ' &#183; ' + s.hub + '</small>' +
       '<i>' + s.est + ' &#183; ' + P(s.fee) + ' delivery &#183; minimum ' + P(s.min) + '</i></div></div>';
   }
