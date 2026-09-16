@@ -154,6 +154,9 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   .mrow .ph .grad{width:100%;height:100%;background:linear-gradient(135deg,var(--a),var(--b))}
   .mrow .add{position:absolute;right:4px;bottom:4px;width:26px;height:26px;border-radius:999px;border:0;
              background:#05462E;color:#fff;font-size:17px;line-height:1;cursor:pointer;font-weight:600}
+  .mrow .less{position:absolute;right:34px;bottom:4px;width:26px;height:26px;border-radius:999px;
+              border:1px solid rgba(0,0,0,.14);background:#fff;color:#0E1211;font-size:15px;line-height:1;
+              cursor:pointer;font-weight:700}
   .qty{position:absolute;left:4px;bottom:4px;background:#05462E;color:#fff;border-radius:999px;
        font-size:11px;font-weight:700;padding:2px 7px}
 
@@ -386,7 +389,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
       </div>
       <div id="h-group"></div>
       <div class="cats" id="cats"></div>
-      <h2 id="h2">Open now</h2>
+      <h2 id="h2">Shops on Sprint Me</h2>
       <p class="sub" id="sub">Tap a shop, then add another. They travel together.</p>
       <div id="shops"></div>
     </section>
@@ -495,7 +498,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     <section class="screen" id="s-track">
       <div class="eyebrow" id="t-head">Order SC-4417</div>
       <div class="win"><div class="big" id="t-big">10:42 to 10:52</div></div>
-      <p class="under" id="t-under">Arriving between. Nine in ten land inside this window.</p>
+      <p class="under" id="t-under">Arriving between. This is a prototype estimate, not a measured record.</p>
 
       <div class="map">
         <svg viewBox="0 0 340 210" role="img" aria-label="Live map of the rider approaching the address">
@@ -656,6 +659,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     countIn:function(id){ var t=0, g=this.groups[id]||{}; for(var k in g) t += g[k]; return t; },
     count:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.countIn(id); }); return t; },
     goodsIn:function(id){ var t=0; this.rows(id).forEach(function(r){ t += (r.p.thebe||0)*r.n; }); return t; },
+    /* A line whose price the merchant has not confirmed is NOT worth zero. It is
+       worth an unknown amount, so it blocks payment instead of quietly costing P0. */
+    unpriced:function(){ var n=0, b=this; this.shopIds().forEach(function(id){
+      b.rows(id).forEach(function(r){ if (r.p.thebe === null || r.p.thebe === undefined) n++; }); }); return n; },
     goods:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.goodsIn(id); }); return t; },
     removeShop:function(id){ delete this.groups[id]; if(this.count()===0) this.ref=null; changed(); },
     clear:function(){ this.groups = {}; this.ref = null; changed(); }
@@ -805,7 +812,9 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
      figures and are marked as such in the footer.
      ======================================================================= */
   var SECTIONS = [
-    { t: 'Fastest near you',            pick: function(s){ return parseInt(s.est) <= 30; } },
+    /* Not "near you": nothing here measures distance. It is the merchants whose own
+       published estimate starts at 30 minutes or less. */
+    { t: 'Usually fastest',             pick: function(s){ return parseInt(s.est) <= 30; } },
     { t: 'Good food, close by',         pick: function(s){ return s.cat === 'Restaurants'; } },
     { t: 'Groceries, same delivery',    pick: function(s){ return s.cat === 'Supermarket'; } },
     { t: 'Pharmacy and health',         pick: function(s){ return s.cat === 'Pharmacy'; } },
@@ -884,6 +893,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   }
   function feedShop(id){ for (var i = 0; i < FEED_SHOPS.length; i++) if (FEED_SHOPS[i].id === id) return FEED_SHOPS[i]; return null; }
   var FSHOP = null;
+  /* Liquor cannot be ordered until an age check and a controlled handover exist.
+     Botswana requirements have not been verified, so the category is visible and
+     the checkout is closed, rather than working like groceries. */
+  var AGE_RESTRICTED = { Liquor: true };
   function openFeedShop(id){
     var s = feedShop(id); if (!s) return;
     FSHOP = s; SHOP = { id: s.id, name: s.name, fee: s.fee, min: s.min, category: s.cat, temp: 'ambient' };
@@ -892,7 +905,8 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     $('sh-hero').innerHTML = cover(s);
     $('sh-name').textContent = s.name;
     $('sh-where').innerHTML = s.cuisine + ' &#183; ' + s.hub;
-    $('sh-pills').innerHTML = '<span>' + s.est + '</span><span>' + P(s.fee) + ' delivery</span><span>minimum ' + P(s.min) + '</span>';
+    $('sh-pills').innerHTML = '<span>' + s.est + '</span><span>' + P(s.fee) + ' delivery</span><span>minimum ' + P(s.min) + '</span>'
+      + (AGE_RESTRICTED[s.cat] ? '<span style="background:#FFF3DA;color:#8a5a00">Age check required, ordering closed</span>' : '');
     drawShop(); changed(); show('shop');
   }
   /* the shop menu, drawn with a photograph on every row */
@@ -906,6 +920,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
         '<span class="pr">' + priceLabel(m) + '</span></div>' +
         '<div class="ph">' + productImage(m, FSHOP) +
         (n ? '<span class="qty">' + n + '</span>' : '') +
+        (n ? '<button class="less" data-less="' + m.id + '">&#8722;</button>' : '') +
         '<button class="add" data-add="' + m.id + '">+</button></div></div>';
     }).join('');
     var g = basket.goodsIn(FSHOP.id);
@@ -916,10 +931,13 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     $('sh-go').disabled = !basket.count();
   }
   $('sh-menu').onclick = function(e){
-    var b = e.target.closest('[data-add]'); if (!b || !FSHOP) return;
-    var id = +b.getAttribute('data-add'), item = null;
+    var b = e.target.closest('[data-add],[data-less]'); if (!b || !FSHOP) return;
+    var id = +(b.getAttribute('data-add') || b.getAttribute('data-less')), item = null;
     for (var i = 0; i < MENU.length; i++) if (MENU[i].id === id) item = MENU[i];
-    if (item){ basket.add(item, FSHOP.id); changed(); }
+    if (!item) return;
+    if (AGE_RESTRICTED[FSHOP.cat]) return;   /* no age check exists yet */
+    if (b.hasAttribute('data-add')) basket.add(item, FSHOP.id); else basket.less(item, FSHOP.id);
+    changed();
   };
   $('sh-go').onclick = function(){ show('pay'); };
   $('feed').onclick = function(e){
@@ -1008,7 +1026,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     Array.prototype.forEach.call($('seg').children, function(x){ x.className = ''; });
     t.className = 'on';
     collecting = t.getAttribute('data-k') === 'collect';
-    $('h2').textContent = collecting ? 'Nearest counters' : 'Open now';
+    $('h2').textContent = collecting ? 'Counters' : 'Shops on Sprint Me';
     $('sub').innerHTML = collecting
       ? 'Offices and service points across Botswana. Addresses from the company profile.'
       : 'No ratings. Sprint has never collected one. Tap a shop to place an order.';
@@ -1088,23 +1106,20 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   /* ---------- the shop, where the basket is filled ---------- */
   $('sh-where').textContent = SHOP.where;
   $('sh-name').textContent = SHOP.name;
-  var NOTES = {
+  /* Renamed from NOTES. A second `var NOTES = [banknotes]` below destroyed this one
+     silently, so none of these notes had reached a screen since the day it was added. */
+  var MERCHANT_NOTES = {
     21:'Over the counter items only. Prescription medicines are not available for delivery yet.',
     7:'Hot food. Collected last so it reaches you hot.',
     1:'Hot food. Collected last so it reaches you hot.',
     13:'Groceries. Collected first, because they travel better than a burger does.'
   };
-  $('sh-menu').onclick = function(e){
-    var b = e.target.closest('[data-add],[data-less]'); if (!b) return;
-    var id = +(b.getAttribute('data-add') || b.getAttribute('data-less'));
-    var p = null; MENU.forEach(function(m){ if (m.id === id) p = m; });
-    if (!p) return;
-    if (b.hasAttribute('data-add')) basket.add(p); else basket.less(p);
-  };
+  /* the legacy handler lived here and silently replaced the feed one, because a
+     second assignment to the same onclick wins. The feed handler is the only one. */
   $('sh-go').onclick = function(){ show('pay'); };
 
   /* ---------- pay: four gates, cash change from real Botswana money ---------- */
-  var NOTES = [20000,10000,5000,2000,1000], COINS = [500,200,100,50,25,10,5];
+  var CASH_NOTES = [20000,10000,5000,2000,1000], COINS = [500,200,100,50,25,10,5];
   function changeFor(t, tender){
     var left = tender - t, out = [], all = NOTES.concat(COINS);
     if (left < 0) return null;
@@ -1171,18 +1186,36 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     }).join('');
     var sep = separateFees(), one = deliveryFee();
     $('p-money').innerHTML =
-      '<div><span>Items</span><b>' + P(basket.goods()) + '</b></div>' +
+      '<div><span>Items</span><b>' + (basket.unpriced()
+        ? P(basket.goods()) + ' + ' + basket.unpriced() + ' to confirm'
+        : P(basket.goods())) + '</b></div>' +
       (shopsNow.length > 1
         ? '<div><span style="text-decoration:line-through;color:var(--faint)">' + shopsNow.length + ' separate deliveries</span>' +
             '<b style="text-decoration:line-through;color:var(--faint);font-weight:500">' + P(sep) + '</b></div>' +
           '<div><span style="color:var(--green);font-weight:700">One Sprint Me delivery</span><b style="color:var(--green)">' + P(one) + '</b></div>' +
           (saving() > 0 ? '<div><span style="color:var(--green);font-weight:700">You save</span><b style="color:var(--green)">' + P(saving()) + '</b></div>' : '')
         : '<div><span>Delivery</span><b>' + P(one) + '</b></div>') +
-      '<div style="font-size:15px;color:#111"><b>Total</b><b>' + P(total()) + '</b></div>';
+      '<div style="font-size:15px;color:#111"><b>' + (basket.unpriced() ? 'Total so far' : 'Total') +
+        '</b><b>' + P(total()) + '</b></div>';
 
     var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
-    var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk;
+    /* Every merchant minimum is an order-engine invariant, not a label. Showing
+       "minimum P150" and then taking P30 is how a shop refuses an order after
+       the customer has already paid. */
+    var shortShop = null;
+    basket.shops().forEach(function(sh){
+      /* A shop holding an unpriced line cannot be measured against its minimum:
+         the subtotal is unknown, not low. That shop is blocked by the price gate. */
+      var anyUnpriced = basket.rows(sh.id).some(function(r){ return r.p.thebe === null || r.p.thebe === undefined; });
+      if (!anyUnpriced && shortShop === null && basket.goodsIn(sh.id) < sh.min) shortShop = sh;
+    });
+    var unpriced = basket.unpriced();
+    var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk
+                && shortShop === null && unpriced === 0;
     $('p-why').textContent = basket.count() === 0 ? 'Your basket is empty'
+      : unpriced ? (unpriced === 1 ? 'One item still needs a price from the shop'
+                                   : unpriced + ' items still need a price from the shop')
+      : shortShop ? 'Add ' + P(shortShop.min - basket.goodsIn(shortShop.id)) + ' more from ' + shortShop.name
       : !pay.addr ? 'Confirm the address first'
       : !pay.rail ? 'Choose how you pay'
       : !cashOk ? 'Pick an amount the rider can change'
@@ -1203,18 +1236,28 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     pay.tender = +t.getAttribute('data-v'); drawPay();
   };
   $('p-place').onclick = function(){
-    ORDER.goods = basket.goods();
-    ORDER.rail = pay.rail || 'myzaka';
+    /* A fresh snapshot, not a mutation. The old object was created at startup and
+       kept its first merchant and its first delivery fee for ever, so the screen
+       could show one thing and the engine settle another. */
+    ORDER = snapshotOrder();
     oReset(HAPPY); show('order');
   };
 
   /* ---------- the counter, on brick 32's rules, reading the SAME basket ---------- */
   var ACCEPT = 120, GIVE_UP = 600;
-  var TILLS = {
-    on:    {silent:false, person:SHOP.person, phone:SHOP.till, quiet:null},
-    quiet: {silent:true,  person:SHOP.person, phone:SHOP.till, quiet:40},
-    boxed: {silent:true,  person:null,        phone:null,      quiet:null}
-  };
+  /* The counter's contact is looked up from the order's merchant EVERY time.
+     It used to be frozen at startup from whichever shop happened to load first,
+     so staff could be given one merchant's name while packing another's order. */
+  function tillFor(kind){
+    var m = (ORDER.deliveries && ORDER.deliveries[0]) || {};
+    var sh = SHOPS[m.merchant_id] || SHOP || {};
+    if (kind === 'boxed') return {silent:true, person:null, phone:null, quiet:null, shop:sh.name};
+    return {silent: kind === 'quiet', person: sh.person || null, phone: sh.till || null,
+            quiet: kind === 'quiet' ? 40 : null, shop: sh.name};
+  }
+  var TILLS = { get on(){ return tillFor('on'); },
+                get quiet(){ return tillFor('quiet'); },
+                get boxed(){ return tillFor('boxed'); } };
   var till = 'on', gone = 30, accepted = false;
   function mmss(n){ var m = Math.floor(n/60), s = n%60; return m + ':' + (s<10?'0':'') + s; }
   function cState(t, secs){
@@ -1296,9 +1339,31 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   $('c-accept').onclick = function(){ accepted = true; cDraw(); };
 
   /* ---------- the order, through the real engine, on the real basket ---------- */
-  var ORDER = { order_id:'SC-4417', merchant_id:'m2', merchant_name:SHOP.name,
-                goods:basket.goods(), delivery_fee:deliveryFee(), rail:'myzaka',
-                fault:'none', delivered:false, perishable:true };
+  /* The order is multi merchant, because the basket is. Each merchant carries its
+     own lines, its own subtotal and its own readiness, so one shop running out of
+     stock cannot collapse the accounting for the others. The single merchant_id
+     fields are kept only so the existing settlement engine still runs. */
+  function snapshotOrder(){
+    var shops = basket.shops();
+    var lead = shops[0] || SHOP;
+    return {
+      order_id: basket.ref || 'SC-4417',
+      placed_at: new Date().toISOString(),
+      deliveries: shops.map(function(sh){
+        return { merchant_id: sh.id, merchant_name: sh.name,
+                 items: basket.rows(sh.id).map(function(r){
+                   return { id:r.p.id, name:r.p.name, qty:r.n, thebe:r.p.thebe }; }),
+                 subtotal: basket.goodsIn(sh.id), minimum: sh.min,
+                 own_fee_if_alone: sh.fee, readiness:'accepted', bags:[] };
+      }),
+      merchant_id: lead.id, merchant_name: lead.name,
+      goods: basket.goods(), delivery_fee: deliveryFee(),
+      separate_fees: separateFees(), saving: saving(),
+      rail: (typeof pay !== 'undefined' && pay.rail) || 'myzaka',
+      fault:'none', delivered:false, perishable:true
+    };
+  }
+  var ORDER = snapshotOrder();
   var HAPPY = [
     ['pay_succeeded','system','Naledi pays'],
     ['offer_to_riders','system','Sent to riders nearby'],
@@ -1367,7 +1432,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
       if (s){
         var PU = E.settlement.pula;
         m.hidden = false;
-        m.innerHTML = '<div><span>To the pharmacy</span><b>' + PU(s.merchant) + '</b></div>' +
+        m.innerHTML = '<div><span>To ' + (ORDER.merchant_name || 'the merchant') + '</span><b>' + PU(s.merchant) + '</b></div>' +
           '<div><span>Cannot be resold</span><b>' + PU(s.perishable_loss) + '</b></div>' +
           '<div><span>Sprint keeps</span><b>' + PU(s.sprint_fee) + '</b></div>' +
           '<div><span>Sprint carries</span><b>' + PU(s.sprint_absorbs) + '</b></div>' +
@@ -1432,7 +1497,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
     [46,82,126,178].forEach(function(y){ br.appendChild(el('line',{x1:0,y1:y,x2:340,y2:y,stroke:'#e6e6e3','stroke-width':6})); });
 
     var SCENES = {
-      normal:  {at:0.42, big:'10:42 to 10:52', cls:'',       under:'Arriving between. Nine in ten land inside this window.', rider:'On the way to you'},
+      normal:  {at:0.42, big:'10:42 to 10:52', cls:'',       under:'Arriving between. This is a prototype estimate, not a measured record.', rider:'On the way to you'},
       traffic: {at:0.54, big:'10:42 to 11:06', cls:' amber', under:'Held up on Western Bypass. The earliest time has not moved, only the far edge has.', rider:'Held up, still coming'},
       door:    {at:0.985,big:'Right now',      cls:'',       under:'Kabelo is at your gate. He waits five minutes.', rider:'At your gate'},
       done:    {at:1,    big:'10:47',          cls:' green', under:'Handed to you and photographed at the door. The photo is kept 90 days, never a photo of a person.', rider:'Delivered'}
