@@ -1,2 +1,6 @@
+# Deliberately NOT "Disallow: /".
+# A blocked crawler never reads the page, so it never sees the noindex tag, and
+# Google can still list a bare URL it found through a link. Letting it read the
+# page is what gets the page dropped from the index for good.
 User-agent: *
-Disallow: /
+Allow: /
