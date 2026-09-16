@@ -323,7 +323,7 @@
   }
   function readyToPay(p) {
     if (!p.agreed) {
-      return { ready: false, says: "The fault model is still a proposal, so nothing can be paid out yet. Barbara has it." };
+      return { ready: false, says: "The fault model is still a proposal, so nothing can be paid out yet." };
     }
     if (p.total < 0) {
       return { ready: false, says: "The day works out to less than nothing, which means something is wrong. A person must look." };
