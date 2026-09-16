@@ -60,7 +60,7 @@
 
   /* ---- brand furniture: a logo is CONTAINED, a photograph is COVERED ---- */
   .appbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;background:#fff}
-  .appbar .mark{height:34px;width:auto;object-fit:contain;display:block;flex:none}
+  .appbar .mark{height:30px;width:auto;max-width:190px;object-fit:contain;display:block}
   .appbar .wm{flex:1;min-width:0}
   .appbar .wm b{display:block;font-size:22px;font-weight:800;letter-spacing:-.6px;color:#0E1211;line-height:1.1}
   .appbar .wm b em{font-style:normal;color:#1B7A3E}
@@ -98,7 +98,11 @@
   .lrow .th .logochip img{max-width:100%;max-height:100%;object-fit:contain;display:block}
   .idblock b{font-size:13px;font-weight:800;color:#0E1211;letter-spacing:-.2px;white-space:nowrap;
              overflow:hidden;text-overflow:ellipsis}
-  .ph .plate{width:100%;height:100%;background:linear-gradient(135deg,var(--a),var(--b));position:relative}
+  .ph .plate{width:100%;height:100%;background:var(--a);position:relative;opacity:.92}
+  .ph .plate .mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                   color:#fff;font-size:34px;font-weight:800;letter-spacing:-1px;opacity:.9}
+  .sec.soon .card,.sec.soon .lrow{opacity:.62}
+  .sec.soon .hd b{color:#6B6F6D}
   .ph .plate .nm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
                  color:#fff;font-size:19px;font-weight:800;letter-spacing:-.3px;text-align:center;padding:0 12px;
                  text-shadow:0 1px 4px rgba(0,0,0,.28)}
@@ -351,8 +355,10 @@
         <!-- Sprint's OWN corporate logo, the approved file, never redrawn.
              The prototype cheetah that was here is on the prohibited list. -->
         <div class="appbar">
-          <img class="mark" src="brands/sprint/logo-mark.png" alt="Sprint Couriers">
-          <div class="wm"><b>Sprint <em>Me</em></b><small>Several shops. One delivery.</small></div>
+          <div class="wm">
+            <img class="mark" src="brands/sprint/logo-mark.png" alt="Sprint Couriers">
+            <small>Sprint Me &#183; several shops, one delivery</small>
+          </div>
           <div class="addrpill">
             <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
             <span><i>Deliver to</i><b>Block 9, Gaborone</b></span>
@@ -834,23 +840,28 @@
      Photographs are real, downloaded by fetch-photos.py. Prices are prototype
      figures and are marked as such in the footer.
      ======================================================================= */
+  /* A rail is for shops you can actually order from. 27 of the 31 merchants have sent
+     no menu, and mixing them into the top rails made the whole feed read as broken:
+     13 of the 15 cards in the first rail were dead ends. They keep their place on the
+     network, at the foot, honestly labelled. */
+  function orderable(s){ return s.menuStatus === 'verified'; }
   var SECTIONS = [
     /* Not "near you": nothing here measures distance. It is the merchants whose own
        published estimate starts at 30 minutes or less. */
-    { t: 'Usually fastest',             pick: function(s){ return parseInt(s.est) <= 30; } },
-    { t: 'Good food, close by',         pick: function(s){ return s.cat === 'Restaurants'; } },
-    { t: 'Groceries, same delivery',    pick: function(s){ return s.cat === 'Supermarket'; } },
-    { t: 'Pharmacy and health',         pick: function(s){ return s.cat === 'Pharmacy'; } },
-    { t: 'Everything else on Sprint Me', pick: function(s){ return s.cat === 'Liquor' || s.cat === 'Stationery'; } }
+    { t: 'Usually fastest',          pick: function(s){ return orderable(s) && parseInt(s.est) <= 30; } },
+    { t: 'Food you can order now',   pick: function(s){ return orderable(s) && s.cat === 'Restaurants'; } },
+    { t: 'Groceries, same delivery', pick: function(s){ return orderable(s) && s.cat === 'Supermarket'; } },
+    { t: 'Pharmacy and health',      pick: function(s){ return orderable(s) && s.cat === 'Pharmacy'; } }
   ];
   function tint(s){ var p = s.tint.split(','); return '--a:' + p[0] + ';--b:' + p[1]; }
+  function monogram(n){ return (n||'?').replace(/[^A-Za-z ]/g,'').split(' ')
+    .filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join('').toUpperCase(); }
   /* ---------------------------------------------------------------------
      THE ONLY PLACE AN IMAGE IS CHOSEN. Four types, never interchangeable,
      and every fallback is fixed. A wrong picture is worse than no picture:
      a customer who sees pudding sold as baked beans stops believing the
      prices, the stock and the delivery too.
      --------------------------------------------------------------------- */
-  function tint(s){ var p = s.tint.split(','); return '--a:' + p[0] + ';--b:' + p[1]; }
 
   function merchantIdentity(s){
     /* the company's own logo, else its name in type. NEVER a photograph.
@@ -866,7 +877,7 @@
        random dish: that is how Choppies ended up being a beef stew. */
     var body = (s.coverStatus === 'verified_official_asset_url' && s.cover)
       ? '<img src="' + s.cover + '" alt="" loading="lazy">'
-      : '<div class="plate" style="' + tint(s) + '"><span class="nm">' + s.name + '</span></div>';
+      : '<div class="plate" style="' + tint(s) + '"><span class="mono">' + monogram(s.name) + '</span></div>';
     return body + merchantIdentity(s);
   }
   function productImage(m, s){
@@ -907,8 +918,16 @@
       html += '<div class="sec"><div class="hd"><b>' + sec.t + '</b><span data-all="1">See all</span></div>' +
               '<div class="rail">' + list.map(storeCard).join('') + '</div></div>';
     });
-    html += '<div class="sec"><div class="hd"><b>All ' + FEED_SHOPS.length + ' shops near you</b></div>' +
-            '<div class="list">' + FEED_SHOPS.map(listRow).join('') + '</div></div>';
+    var soon = FEED_SHOPS.filter(function(s){ return !orderable(s); });
+    var now  = FEED_SHOPS.filter(orderable);
+    html += '<div class="sec"><div class="hd"><b>All ' + now.length + ' shops you can order from</b></div>' +
+            '<div class="list">' + now.map(listRow).join('') + '</div></div>';
+    if (soon.length){
+      html += '<div class="sec soon"><div class="hd"><b>Coming soon</b></div>' +
+        '<p class="sub" style="padding:0 16px 8px;margin:0">' + soon.length + ' more shops are on the Sprint Me network. ' +
+        'Their prices and stock come from the shop itself and have not arrived yet.</p>' +
+        '<div class="list">' + soon.map(listRow).join('') + '</div></div>';
+    }
     $('feed').innerHTML = html;
     var noLogo = FEED_SHOPS.filter(function(x){ return x.logoStatus !== 'approved-local'; }).length;
     $('credit').innerHTML = 'Concept prototype. Company logos are shown only where an approved asset exists; '
@@ -1042,7 +1061,8 @@
   /* the counter and ops screens are staff tools: only on the tab bar with ?ops=1 */
   if (/[?&]ops=1/.test(location.search)){
     $('tabs').insertAdjacentHTML('beforeend',
-      '<button class="tab" data-s="counter"><i>&#128438;</i>Counter</button><button class="tab" data-s="ops"><i>&#9678;</i>Ops</button>');
+      '<button class="tab" data-s="counter"><i><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 7V5h10v2M7 13h10"/></svg></i>Counter</button>'
+      + '<button class="tab" data-s="ops"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></i>Ops</button>');
   }
   function drawPip(){
     var p = $('pip'), n = basket.count();
@@ -1050,7 +1070,7 @@
   }
 
   /* ---------- home ---------- */
-  /* 31 merchants, read out of assets/partner_data/merchants_database.json: real
+  /* 31 merchants, read out of merchants.gen.js: real
      names, real categories, real delivery fees, real estimated times. The demo
      used to show three, and one of those advertised a hole in the data, which made
      a working list look like a broken one. */
