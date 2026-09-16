@@ -65,6 +65,35 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   .tab i{opacity:1}
   #s-browse h1{margin:6px 0 2px}
 
+  /* ---- brand furniture: a logo is CONTAINED, a photograph is COVERED ---- */
+  .appbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;background:#fff}
+  .appbar .mark{height:34px;width:auto;object-fit:contain;display:block;flex:none}
+  .appbar .wm{flex:1;min-width:0}
+  .appbar .wm b{display:block;font-size:22px;font-weight:800;letter-spacing:-.6px;color:#0E1211;line-height:1.1}
+  .appbar .wm b em{font-style:normal;color:#1B7A3E}
+  .appbar .wm small{display:block;font-size:11.5px;color:#6B6F6D;margin-top:1px}
+  .addrpill{flex:none;display:flex;align-items:center;gap:6px;border:1px solid rgba(0,0,0,.08);
+            border-radius:14px;padding:7px 10px;background:#fff}
+  .addrpill svg{width:15px;height:15px;stroke:#1B7A3E;fill:none;stroke-width:2}
+  .addrpill i{font-style:normal;font-size:10px;color:#6B6F6D;display:block;line-height:1.2}
+  .addrpill b{font-size:12.5px;font-weight:700;color:#0E1211;display:block;line-height:1.2}
+  .srch{display:flex;align-items:center;gap:9px;margin:8px 16px 0;background:#F2F3F2;
+        border-radius:15px;height:46px;padding:0 13px;color:#8d918f;font-size:13.5px;cursor:pointer}
+  .srch svg{width:17px;height:17px;stroke:#8d918f;fill:none;stroke-width:2.2;flex:none}
+  /* a merchant identity block: approved logo, or the name set in type. NEVER a photograph. */
+  .idblock{position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:7px;
+           background:rgba(255,255,255,.95);border-radius:10px;padding:5px 9px;max-width:88%}
+  .idblock img{height:20px;width:auto;max-width:74px;object-fit:contain;display:block}
+  .idblock b{font-size:13px;font-weight:800;color:#0E1211;letter-spacing:-.2px;white-space:nowrap;
+             overflow:hidden;text-overflow:ellipsis}
+  .ph .plate{width:100%;height:100%;background:linear-gradient(135deg,var(--a),var(--b));position:relative}
+  .ph .plate .nm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                 color:#fff;font-size:19px;font-weight:800;letter-spacing:-.3px;text-align:center;padding:0 12px;
+                 text-shadow:0 1px 4px rgba(0,0,0,.28)}
+  .pend{display:inline-block;font-size:10.5px;font-weight:700;color:#8a5a00;background:#FFF3DA;
+        border-radius:6px;padding:2px 6px;margin-top:4px}
+  .mrow .ph img.pl{object-fit:contain;background:#F3F4F6;padding:0}
+
   /* ---- the feed: Uber Eats shape, titled sections of horizontal store rails ---- */
   .hcrop{display:block;width:100%;height:auto}
   .feed{padding:0 0 26px}
@@ -304,9 +333,20 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
            A different picture per weekday lives at home/home-0.jpg .. home-6.jpg
            (0 = Sunday); when one is missing the base picture is shown. -->
       <div class="himg" id="himg">
-        <!-- the top of HIS screen, cropped from his own file so the type is his -->
-        <img class="hcrop" src="home/top.jpg" alt="Sprint Me">
-        <a class="hs" data-act="go:browse" aria-label="Search" style="left:3%;top:47%;width:94%;height:30%"></a>
+        <!-- Sprint's OWN corporate logo, the approved file, never redrawn.
+             The prototype cheetah that was here is on the prohibited list. -->
+        <div class="appbar">
+          <img class="mark" src="brands/sprint/logo-mark.png" alt="Sprint Couriers">
+          <div class="wm"><b>Sprint <em>Me</em></b><small>Several shops. One delivery.</small></div>
+          <div class="addrpill">
+            <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+            <span><i>Deliver to</i><b>Block 9, Gaborone</b></span>
+          </div>
+        </div>
+        <div class="srch" data-act="go:browse">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
+          Search shops, food, groceries and more
+        </div>
         <!-- the moving hero, three panels cut from his three screens -->
         <div class="hero" id="hero" aria-label="Today on Sprint Me">
           <div class="track" id="hero-track">
@@ -531,6 +571,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
  </div>
 </div>
 
+<script src="brands.gen.js"></script>
 <script src="feed.gen.js"></script>
 <script src="vendor/motion.js"></script>
 <script src="engine.bundle.js"></script>
@@ -609,7 +650,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
     },
     countIn:function(id){ var t=0, g=this.groups[id]||{}; for(var k in g) t += g[k]; return t; },
     count:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.countIn(id); }); return t; },
-    goodsIn:function(id){ var t=0; this.rows(id).forEach(function(r){ t += r.p.thebe*r.n; }); return t; },
+    goodsIn:function(id){ var t=0; this.rows(id).forEach(function(r){ t += (r.p.thebe||0)*r.n; }); return t; },
     goods:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.goodsIn(id); }); return t; },
     removeShop:function(id){ delete this.groups[id]; if(this.count()===0) this.ref=null; changed(); },
     clear:function(){ this.groups = {}; this.ref = null; changed(); }
@@ -673,7 +714,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
     if (chip) chip.click();
   }
   $('himg').onclick = function(e){
-    var a = e.target.closest('.hs'); if (!a) return;
+    var a = e.target.closest('.hs') || e.target.closest('[data-act]'); if (!a) return;
     e.preventDefault();
     var act = a.getAttribute('data-act').split(':');
     if (act[0] === 'shop') openShopById(+act[1]);
@@ -766,10 +807,39 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
     { t: 'Everything else on Sprint Me', pick: function(s){ return s.cat === 'Liquor' || s.cat === 'Stationery'; } }
   ];
   function tint(s){ var p = s.tint.split(','); return '--a:' + p[0] + ';--b:' + p[1]; }
-  function cover(s, cls){
-    return s.cover
-      ? '<img src="img/' + s.cover + '" alt="" loading="lazy">'
-      : '<div class="grad" style="' + tint(s) + '"><b>' + s.name + '</b></div>';
+  /* ---------------------------------------------------------------------
+     THE ONLY PLACE AN IMAGE IS CHOSEN. Four types, never interchangeable,
+     and every fallback is fixed. A wrong picture is worse than no picture:
+     a customer who sees pudding sold as baked beans stops believing the
+     prices, the stock and the delivery too.
+     --------------------------------------------------------------------- */
+  function tint(s){ var p = s.tint.split(','); return '--a:' + p[0] + ';--b:' + p[1]; }
+
+  function merchantIdentity(s){
+    /* approved logo, else the name in type. Never a photograph. */
+    return '<span class="idblock">' +
+      (s.logoStatus === 'approved-local' && s.logo
+        ? '<img src="' + s.logo + '" alt="' + s.name + '">'
+        : '<b>' + s.name + '</b>') + '</span>';
+  }
+  function cover(s){
+    /* verified merchant photograph, else a neutral branded panel. Never a
+       random dish: that is how Choppies ended up being a beef stew. */
+    var body = (s.coverStatus === 'verified_official_asset_url' && s.cover)
+      ? '<img src="' + s.cover + '" alt="" loading="lazy">'
+      : '<div class="plate" style="' + tint(s) + '"><span class="nm">' + s.name + '</span></div>';
+    return body + merchantIdentity(s);
+  }
+  function productImage(m, s){
+    /* the exact SKU or nothing. No lookalikes, ever. */
+    if (m.imgStatus === 'verified' && m.img && m.productId === m.id)
+      return '<img src="' + m.img + '" alt="" loading="lazy">';
+    return '<img class="pl" src="' + PLACEHOLDERS.product + '" alt="Photo unavailable">';
+  }
+  function priceLabel(m){
+    return (m.thebe === null || m.thebe === undefined)
+      ? '<span class="pend">Price confirmed at the shop</span>'
+      : P(m.thebe);
   }
   function storeCard(s){
     return '<div class="card" data-shop="' + s.id + '">' +
@@ -780,7 +850,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
   }
   function listRow(s){
     return '<div class="lrow" data-shop="' + s.id + '"><div class="th">' +
-      (s.cover ? '<img src="img/' + s.cover + '" alt="" loading="lazy">' : '<div class="grad" style="' + tint(s) + '"></div>') +
+      ((s.coverStatus === 'verified_official_asset_url' && s.cover) ? '<img src="' + s.cover + '" alt="" loading="lazy">' : '<div class="plate" style="' + tint(s) + '"></div>') +
       '</div><div class="tx"><b>' + s.name + '</b><small>' + s.cuisine + ' &#183; ' + s.hub + '</small>' +
       '<i>' + s.est + ' &#183; ' + P(s.fee) + ' delivery &#183; minimum ' + P(s.min) + '</i></div></div>';
   }
@@ -795,8 +865,11 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
     html += '<div class="sec"><div class="hd"><b>All ' + FEED_SHOPS.length + ' shops near you</b></div>' +
             '<div class="list">' + FEED_SHOPS.map(listRow).join('') + '</div></div>';
     $('feed').innerHTML = html;
-    $('credit').innerHTML = 'Concept prototype. Prices and delivery times are illustrative and are not quoted to anybody. ' +
-      'Prepared food photographs from TheMealDB. Packaged goods photographs from Open Food Facts contributors, CC BY-SA.';
+    var noLogo = FEED_SHOPS.filter(function(x){ return x.logoStatus !== 'approved-local'; }).length;
+    $('credit').innerHTML = 'Concept prototype. Company logos are shown only where an approved asset exists; '
+      + noLogo + ' of ' + FEED_SHOPS.length + ' merchants are shown as a name until they supply one. '
+      + 'Menu items and prices come from each merchant&#8217;s own published page where one exists, and are blank otherwise. '
+      + 'No product photograph is shown unless it is the exact item. Delivery fees and times are prototype figures.';
   }
   function feedShop(id){ for (var i = 0; i < FEED_SHOPS.length; i++) if (FEED_SHOPS[i].id === id) return FEED_SHOPS[i]; return null; }
   var FSHOP = null;
@@ -819,9 +892,8 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/78b5421c77428a78.svg?t="+D
       var n = (basket.groups[FSHOP.id] || {})[m.id] || 0;
       return '<div class="mrow"><div class="tx"><b>' + m.name + '</b>' +
         (m.desc ? '<small>' + m.desc + '</small>' : '') +
-        '<span class="pr">' + P(m.thebe) + '</span></div>' +
-        '<div class="ph">' + (m.img ? '<img src="img/' + m.img + '" alt="" loading="lazy">'
-                                    : '<div class="grad" style="' + tint(FSHOP) + '"></div>') +
+        '<span class="pr">' + priceLabel(m) + '</span></div>' +
+        '<div class="ph">' + productImage(m, FSHOP) +
         (n ? '<span class="qty">' + n + '</span>' : '') +
         '<button class="add" data-add="' + m.id + '">+</button></div></div>';
     }).join('');

@@ -1,0 +1,31 @@
+{
+  "global_rules": [
+    "AI-generated or AI-redrawn real-company logos",
+    "Search-engine result thumbnails as production assets",
+    "Unverified logo aggregation sites as canonical brand sources",
+    "Random category photography used in place of a merchant logo",
+    "A similar product photo used when the exact SKU image is missing"
+  ],
+  "merchant_specific": [
+    {
+      "merchant": "Sprint Couriers",
+      "prohibited": [
+        "Prototype yellow spotted 'Sprint Me' cheetah",
+        "Behance redesign concepts",
+        "generic S/cheetah marks"
+      ]
+    },
+    {
+      "merchant": "Woolworths South Africa",
+      "prohibited": [
+        "Australian Woolworths green apple/swirl logo"
+      ]
+    },
+    {
+      "merchant": "Checkers",
+      "prohibited": [
+        "checkers.co.zw / Checkers Office & Home identity"
+      ]
+    }
+  ]
+}
