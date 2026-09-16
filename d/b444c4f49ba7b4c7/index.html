@@ -39,6 +39,32 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
   .screen{display:none;max-width:600px;margin:0 auto}
   .screen.on{display:block}
 
+  /* ---- Home is the customer's own screen picture, with live tap zones over it ---- */
+  #s-home{padding:0;max-width:600px}
+  .himg{position:relative;width:100%;line-height:0;container-type:inline-size}
+  .himg img{width:100%;height:auto;display:block}
+  .hs{position:absolute;display:block;cursor:pointer;-webkit-tap-highlight-color:rgba(27,122,62,.12)}
+  .hs:active{background:rgba(27,122,62,.10);border-radius:14px}
+  .hbar{position:absolute;left:2.46%;top:86.55%;width:94.96%;height:5.69%;background:#EAF3E7;
+        border-radius:16px;display:none;align-items:center;padding:0 3.2%;box-sizing:border-box;
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;line-height:1.15;color:#0E1211}
+  .hbar.on{display:flex}
+  .hbar svg{width:5.2cqw;height:5.2cqw;flex:none;margin-right:3%}
+  .hbar .t{flex:1 1 auto;min-width:0}
+  .hbar .t b{display:block;font-size:2.9cqw;font-weight:700}
+  .hbar .t small{display:block;font-size:2.15cqw;color:#5f6662;margin-top:.3cqw}
+  .hbar .go{flex:none;background:#05462E;color:#fff;font-weight:700;font-size:2.7cqw;border:0;border-radius:999px;
+            padding:0 4.2cqw;height:7.2cqw;display:inline-flex;align-items:center;gap:1.4cqw;cursor:pointer}
+  .hbar .go svg{width:2.6cqw;height:2.6cqw;margin:0}
+  .flash{animation:hb .35s ease}
+  @keyframes hb{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+  /* four tabs on the coded screens, matching the picture's own nav */
+  .tab i svg{width:22px;height:22px;stroke:#8a8f8c;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:#1B7A3E;font-weight:600}
+  .tab.on i svg{stroke:#1B7A3E}
+  .tab i{opacity:1}
+  #s-browse h1{margin:6px 0 2px}
+
   @media (max-width:560px){
     .pub-banner{padding-top:calc(6px + env(safe-area-inset-top)) !important}
     .scroll{padding-top:calc(18px + env(safe-area-inset-top))}
@@ -202,26 +228,38 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
 
     <!-- ================= HOME ================= -->
     <section class="screen on" id="s-home">
-      <div class="addr">Plot 22418, Block 9
-        <svg viewBox="0 0 24 24" fill="none" stroke="#5f5f5f" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+      <!-- The home screen IS the customer's own design picture (home/home.jpg).
+           Transparent tap zones sit over it at measured positions so every
+           button on the picture does the real thing in the engine below.
+           A different picture per weekday lives at home/home-0.jpg .. home-6.jpg
+           (0 = Sunday); when one is missing the base picture is shown. -->
+      <div class="himg" id="himg">
+        <img id="home-img" src="home/home.jpg" alt="Sprint Me home">
+        <a class="hs" data-act="shop:1"   aria-label="Start your basket" style="left:4.9%;top:28.3%;width:34.5%;height:3.8%"></a>
+        <a class="hs" data-act="cat:Restaurants" aria-label="Food"       style="left:2.4%;top:35.1%;width:22.6%;height:10.9%"></a>
+        <a class="hs" data-act="cat:Supermarket" aria-label="Groceries"  style="left:26.7%;top:35.1%;width:23.3%;height:10.9%"></a>
+        <a class="hs" data-act="cat:Pharmacy"    aria-label="Pharmacy"   style="left:52%;top:35.1%;width:22.2%;height:10.9%"></a>
+        <a class="hs" data-act="cat:Parcels"     aria-label="Parcels"    style="left:76%;top:35.3%;width:22.2%;height:10.8%"></a>
+        <a class="hs" data-act="go:browse" aria-label="View all shops"   style="left:80%;top:48.2%;width:18%;height:2.6%"></a>
+        <a class="hs" data-act="shop:1"   aria-label="Nando's"           style="left:2.4%;top:51%;width:47.5%;height:21.4%"></a>
+        <a class="hs" data-act="shop:7"   aria-label="KFC"               style="left:51.5%;top:51%;width:46.2%;height:21.4%"></a>
+        <a class="hs" data-act="add:13:1301" aria-label="Add Fresh Milk 2L" style="left:2.4%;top:77.2%;width:47%;height:9%"></a>
+        <a class="hs" data-act="add:13:1302" aria-label="Add Brown Bread"   style="left:50.5%;top:77.2%;width:47.2%;height:9%"></a>
+        <a class="hs" data-act="go:pay"   aria-label="View basket"       style="left:67.5%;top:87.5%;width:27.8%;height:3.6%"></a>
+        <a class="hs" data-act="go:home"  aria-label="Home"              style="left:0;top:93.8%;width:25%;height:6.2%"></a>
+        <a class="hs" data-act="go:browse" aria-label="Browse"           style="left:25%;top:93.8%;width:25%;height:6.2%"></a>
+        <a class="hs" data-act="go:track" aria-label="Orders"            style="left:50%;top:93.8%;width:25%;height:6.2%"></a>
+        <a class="hs" data-act="go:order" aria-label="Account"           style="left:75%;top:93.8%;width:25%;height:6.2%"></a>
+        <div class="hbar" id="hbar"></div>
       </div>
-      <h1>What do you need<br>brought to you?</h1>
-      <!-- The proposition, said the way a household says it. Uber names the same
-           problem as "you want Thai but your spouse wants tacos"; this is the
-           Gaborone version, and it sits ABOVE the shops because it is the reason
-           to use Sprint rather than a fact about Sprint. -->
-      <div class="pitch">
-        <b>Sprint me mine. Sprint him his.</b>
-        <span>One wants Nando&#8217;s, one wants KFC, somebody needs Panado. Put them in one
-        basket and they come together. One delivery, one fee, one rider. Nobody gives in.</span>
-      </div>
-      <div class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" stroke-width="2.2">
-          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>
-        Search shops, food, groceries and more
-      </div>
+    </section>
+
+    <!-- ================= BROWSE: every shop on the network ================= -->
+    <section class="screen" id="s-browse">
+      <h1>Browse</h1>
+      <p class="sub">Add from any shop. They travel together, one delivery.</p>
       <div id="h-basket"></div>
-      <div class="seg" id="seg">
+      <div class="seg" id="seg" hidden>
         <span class="on" data-k="deliver">Deliver</span>
         <span data-k="collect">Collect</span>
       </div>
@@ -230,11 +268,6 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
       <h2 id="h2">Open now</h2>
       <p class="sub" id="sub">Tap a shop, then add another. They travel together.</p>
       <div id="shops"></div>
-      <div class="send">
-        <b>Send a parcel</b>
-        <small>Anywhere on the Sprint network. Next working day.</small>
-        <div class="price" style="font-size:15px">Pricing on request<span>half a kilo and up</span></div>
-      </div>
     </section>
 
     <!-- ================= SHOP ================= -->
@@ -255,8 +288,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
     <!-- ================= PAY ================= -->
     <section class="screen" id="s-pay">
       <div class="eyebrow">Before you pay</div>
-      <h1 style="margin-bottom:6px">Four things<br>have to be true</h1>
-      <p class="sub">Each one is a rule from the order engine, not a form field.</p>
+      <h1 style="margin-bottom:6px">Your basket</h1>
+      <p class="sub" id="p-shops" style="color:var(--green);font-weight:600"></p>
+      <div id="p-groups"></div>
+      <p class="sub" style="margin-top:14px">Four things have to be true before the button unlocks. Each one is a rule from the order engine, not a form field.</p>
 
       <h2>1. Where the rider goes</h2>
       <div class="note plain"><b>Plot 22418, Block 9</b><br>Blue gate opposite the primary school.
@@ -410,12 +445,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
 
   </div>
   <div class="tabs" id="tabs">
-    <button class="tab on" data-s="home"><i>&#9776;</i>Home</button>
-    <button class="tab" data-s="shop"><i>&#128717;</i>Shop<span class="pip" id="pip" hidden></span></button>
-    <button class="tab" data-s="counter"><i>&#128438;</i>Counter</button>
-    <button class="tab" data-s="order"><i>&#128230;</i>Order</button>
-    <button class="tab" data-s="track"><i>&#128205;</i>Track</button>
-    <button class="tab" data-s="ops"><i>&#9678;</i>Ops</button>
+    <button class="tab on" data-s="home"><i><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i>Home</button>
+    <button class="tab" data-s="browse"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></i>Browse</button>
+    <button class="tab" data-s="pay"><i><svg viewBox="0 0 24 24"><path d="M3 9h18l-2 10H5z"/><path d="M8 9l2-5M16 9l-2-5"/></svg></i>Basket<span class="pip" id="pip" hidden></span></button>
+    <button class="tab" data-s="track"><i><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></i>Orders</button>
   </div>
  </div>
 </div>
@@ -522,7 +555,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
      declaring it further down left it undefined at first draw and the whole
      first render died silently after the shop list. */
   var group = { open:false, people:[] };
-  basket.add(MENU[0]);   /* the demo opens mid life, with one thing already picked */
+  /* the basket starts empty, the way the customer's picture shows it */
 
   function P(t){ return 'P' + (t/100).toFixed(2); }
   function total(){ return basket.goods() + deliveryFee(); }
@@ -534,7 +567,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
      says which draw failed and why, and keeps drawing the rest. */
   function changed(){
     [['drawShop',drawShop],['drawPay',drawPay],['cDraw',cDraw],
-     ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip]].forEach(function(p){
+     ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip],['drawBar',drawBar]].forEach(function(p){
       try { p[1](); } catch(e){ console.error('render failed in ' + p[0] + ': ' + e.message); }
     });
   }
@@ -544,8 +577,65 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
     Array.prototype.forEach.call(document.querySelectorAll('.screen'), function(s){ s.className = 'screen' + (s.id === 's-' + name ? ' on' : ''); });
     Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'), function(t){ t.className = 'tab' + (t.getAttribute('data-s') === name ? ' on' : ''); });
     $('scroll').scrollTop = 0;
+    /* the picture carries its own nav, so the coded tab bar only shows elsewhere */
+    $('tabs').style.display = (name === 'home') ? 'none' : '';
   }
   $('tabs').onclick = function(e){ var t = e.target.closest('.tab'); if (t && t.getAttribute('data-s')) show(t.getAttribute('data-s')); };
+  show('home');   /* the picture carries its own nav; hide the coded tab bar on first load */
+  /* ---------- the picture's tap zones ---------- */
+  function openShopById(id){
+    var m = SHOPS[id]; if (!m || !MENUS[id]) return;
+    SHOP = m; MENU = MENUS[id];
+    drawShopHeader(); drawShop(); changed();
+    show('shop');
+  }
+  function pickCategory(name){
+    show('browse');
+    if (cat === name) return;
+    var i = -1;
+    for (var k = 0; k < CATS.length; k++) if (CATS[k][2] === name) i = k;
+    var chip = (i >= 0) ? $('cats').querySelector('[data-c="' + i + '"]') : null;
+    if (chip) chip.click();
+  }
+  $('himg').onclick = function(e){
+    var a = e.target.closest('.hs'); if (!a) return;
+    e.preventDefault();
+    var act = a.getAttribute('data-act').split(':');
+    if (act[0] === 'shop') openShopById(+act[1]);
+    else if (act[0] === 'cat') pickCategory(act[1]);
+    else if (act[0] === 'go') show(act[1]);
+    else if (act[0] === 'add'){
+      var list = MENUS[+act[1]] || [], item = null;
+      for (var j = 0; j < list.length; j++) if (list[j].id === +act[2]) item = list[j];
+      if (item){ basket.add(item, +act[1]); changed();
+        var bar = $('hbar'); bar.className = 'hbar on flash'; setTimeout(function(){ bar.className = 'hbar on'; }, 400); }
+    }
+  };
+  /* the live basket bar sits exactly over the picture's own bar once something is in it */
+  function drawBar(){
+    var bar = $('hbar'), n = basket.count(), shops = basket.shops().length;
+    if (!n){ bar.className = 'hbar'; bar.innerHTML = ''; return; }
+    bar.className = 'hbar on';
+    bar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#05462E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-2 10H5z"/><path d="M8 9l2-5M16 9l-2-5"/></svg>'
+      + '<div class="t"><b>' + n + (n === 1 ? ' item' : ' items') + ' &#183; ' + shops + (shops === 1 ? ' shop' : ' shops') + '</b>'
+      + '<small>' + (shops > 1 ? 'Different shops. One delivery, ' + P(deliveryFee()) + '.' : 'Add from any shop. One delivery.') + '</small></div>'
+      + '<button class="go" data-go="pay">View basket <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>';
+  }
+  $('hbar').onclick = function(e){ if (e.target.closest('.go')) show('pay'); };
+  $('p-groups').onclick = function(e){ var r = e.target.closest('[data-rm]'); if (r) basket.removeShop(+r.getAttribute('data-rm')); };
+  /* a different picture each day: home/home-0.jpg (Sunday) .. home-6.jpg; ?day=N to preview one */
+  (function(){
+    var q = /[?&]day=(\d)/.exec(location.search);
+    var d = q ? +q[1] : new Date().getDay();
+    var probe = new Image();
+    probe.onload = function(){ $('home-img').src = probe.src; };
+    probe.src = 'home/home-' + d + '.jpg';
+  })();
+  /* the counter and ops screens are staff tools: only on the tab bar with ?ops=1 */
+  if (/[?&]ops=1/.test(location.search)){
+    $('tabs').insertAdjacentHTML('beforeend',
+      '<button class="tab" data-s="counter"><i>&#128438;</i>Counter</button><button class="tab" data-s="ops"><i>&#9678;</i>Ops</button>');
+  }
   function drawPip(){
     var p = $('pip'), n = basket.count();
     p.hidden = n === 0; p.textContent = n;
@@ -793,12 +883,31 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/b444c4f49ba7b4c7.svg?t="+D
       x.className = (x.getAttribute('data-a') === (pay.addr ? 'yes' : 'no')) ? 'on' : '';
     });
 
+    /* the basket, grouped by shop: the picture on the home screen promises
+       "different shops, one delivery", and this is where that promise is shown */
+    var shopsNow = basket.shops();
+    $('p-shops').textContent = shopsNow.length === 0 ? '' :
+      shopsNow.length === 1 ? '1 shop, one delivery' : shopsNow.length + ' shops, one delivery';
+    $('p-groups').innerHTML = shopsNow.map(function(sh){
+      var rows = basket.rows(sh.id);
+      return '<div class="note plain" style="padding:12px 14px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<b style="font-size:14px">' + sh.name + '</b>' +
+          '<span data-rm="' + sh.id + '" style="font-size:11.5px;color:var(--faint);cursor:pointer">Remove shop</span></div>' +
+        rows.map(function(r){
+          return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">' +
+            '<span>' + r.n + ' &#215; ' + r.p.name + '</span><b style="font-variant-numeric:tabular-nums">' + P(r.p.thebe * r.n) + '</b></div>';
+        }).join('') + '</div>';
+    }).join('');
+    var sep = separateFees(), one = deliveryFee();
     $('p-money').innerHTML =
-      '<div><span>Goods</span><b>' + P(basket.goods()) + '</b></div>' +
-      '<div><span>Delivery</span><b>' + P(deliveryFee()) + '</b>' +
-      (saving() > 0 ? '<small style="display:block;color:var(--green);font-weight:600">'
-        + basket.shops().length + ' shops, one fee. You save ' + P(saving()) + '</small>' : '')
-      + '</div>' +
+      '<div><span>Items</span><b>' + P(basket.goods()) + '</b></div>' +
+      (shopsNow.length > 1
+        ? '<div><span style="text-decoration:line-through;color:var(--faint)">' + shopsNow.length + ' separate deliveries</span>' +
+            '<b style="text-decoration:line-through;color:var(--faint);font-weight:500">' + P(sep) + '</b></div>' +
+          '<div><span style="color:var(--green);font-weight:700">One Sprint Me delivery</span><b style="color:var(--green)">' + P(one) + '</b></div>' +
+          (saving() > 0 ? '<div><span style="color:var(--green);font-weight:700">You save</span><b style="color:var(--green)">' + P(saving()) + '</b></div>' : '')
+        : '<div><span>Delivery</span><b>' + P(one) + '</b></div>') +
       '<div style="font-size:15px;color:#111"><b>Total</b><b>' + P(total()) + '</b></div>';
 
     var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
