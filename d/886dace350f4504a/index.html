@@ -109,6 +109,23 @@
   .pend{display:inline-block;font-size:10.5px;font-weight:700;color:#8a5a00;background:#FFF3DA;
         border-radius:6px;padding:2px 6px;margin-top:4px}
   .mrow .ph img.pl{object-fit:contain;background:#F3F4F6;padding:0}
+  /* border-radius with overflow:hidden still lets a raster bleed past the curve on
+     some GPUs. clip-path cuts it for certain, and a compositing layer keeps the
+     edge from feathering. */
+  .card .ph,.hero,.hero .slide,.lrow .th,.mrow .ph,.shophero,.shop i,.idblock,.logochip{
+    isolation:isolate;transform:translateZ(0)}
+  .card .ph{clip-path:inset(0 round 14px)}
+  .hero{clip-path:inset(0 round 18px)}
+  .lrow .th{clip-path:inset(0 round 12px)}
+  .mrow .ph{clip-path:inset(0 round 12px)}
+  .card .ph img,.shophero img,.mrow .ph img{display:block;width:100%;height:100%}
+  /* Browse: one chip style, polarity aware, never an emoji */
+  .shop i{overflow:hidden;isolation:isolate;transform:translateZ(0)}
+  .shop i img{max-width:74%;max-height:74%;object-fit:contain;display:block}
+  .shop i.chip{background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;
+               align-items:center;justify-content:center}
+  .shop i.chip.dark{background:#14100E;border-color:#14100E}
+  .shop i.chip.mono span{color:#fff;font-size:22px;font-weight:800;font-style:normal}
 
   /* ---- the feed: Uber Eats shape, titled sections of horizontal store rails ---- */
   .hcrop{display:block;width:100%;height:auto}
@@ -878,7 +895,10 @@
     var body = (s.coverStatus === 'verified_official_asset_url' && s.cover)
       ? '<img src="' + s.cover + '" alt="" loading="lazy">'
       : '<div class="plate" style="' + tint(s) + '"><span class="mono">' + monogram(s.name) + '</span></div>';
-    return body + merchantIdentity(s);
+    /* No identity pill on the picture. The name, cuisine and fee sit in the card
+       body directly underneath, and the shop header repeats it. The floating white
+       chip on top of the photograph read as a sticker. */
+    return body;
   }
   function productImage(m, s){
     /* the exact SKU or nothing. No lookalikes, ever. */
@@ -1095,6 +1115,11 @@
     if (!cat) return MERCHANTS;
     return MERCHANTS.filter(function(m){ return m.cat === cat; });
   }
+  /* join the legacy Browse list to the feed once, by name */
+  MERCHANTS.forEach(function(m){
+    for (var j = 0; j < FEED_SHOPS.length; j++)
+      if (FEED_SHOPS[j].name === m.name) m.f = FEED_SHOPS[j];
+  });
   function drawShops(list){
     if (!list.length){
       $('shops').innerHTML = '<div class="tbc" style="padding:18px 2px">Nothing in this ' +
@@ -1102,9 +1127,23 @@
       return;
     }
     $('shops').innerHTML = list.map(function(s, i){
-      var right = s.fee === null ? '<em>' + (s.est || '') + '</em>'
-                : '<em>P' + s.fee + '.00<small>' + s.est + '</small></em>';
-      return '<div class="shop" data-i="' + i + '"><i style="background:' + s.bg + '">' + s.i + '</i>' +
+      /* Browse used to render from the legacy MERCHANTS array: emoji glyphs, its own
+         fees, no logos, and a second copy of every shop. It is joined to the feed by
+         name now, so there is one identity and one fee. The array itself should go on
+         the next regeneration; one source of truth. */
+      var f = s.f, thumb;
+      if (f && f.logo){
+        thumb = '<i class="chip' + (f.onDark ? ' dark' : '') + '"><img src="' + f.logo + '" alt=""></i>';
+      } else {
+        var t = (f && f.tint) ? f.tint.split(',') : ['#c9c9c9', '#9a9a9a'];
+        thumb = '<i class="chip mono" style="background:linear-gradient(135deg,' + t[0] + ',' + t[1] + ')">' +
+                '<span>' + monogram(s.name) + '</span></i>';
+      }
+      var fee = f ? P(f.fee) : (s.fee === null ? '' : 'P' + s.fee + '.00');
+      var right = (f && f.menuStatus !== 'verified')
+        ? '<em><small>Menu not sent yet</small></em>'
+        : '<em>' + fee + '<small>' + (f ? f.est : (s.est || '')) + '</small></em>';
+      return '<div class="shop" data-i="' + i + '">' + thumb +
         '<div><b>' + s.name + '</b><small>' + s.hub + '</small></div>' + right + '</div>';
     }).join('');
   }
