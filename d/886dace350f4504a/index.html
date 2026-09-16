@@ -57,6 +57,9 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
          padding:14px 16px;margin:0 0 18px}
   .pitch b{display:block;font-size:15px;line-height:1.35;letter-spacing:-.2px;margin-bottom:5px}
   .pitch span{font-size:13px;color:var(--sub);line-height:1.5}
+  .gbtn{display:block;width:100%;margin-top:9px;padding:11px 12px;border-radius:14px;border:none;
+        background:var(--green);color:#fff;font:600 13px Inter,sans-serif;cursor:pointer;font-family:inherit}
+  .gbtn.ghost{background:none;color:var(--sub);border:1px solid var(--hair);font-weight:500}
   .search{background:var(--wash);border-radius:16px;padding:14px 16px;display:flex;align-items:center;
           gap:11px;color:var(--faint);font-size:14px}
   .search svg{width:16px;height:16px;flex:none}
@@ -222,6 +225,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
         <span class="on" data-k="deliver">Deliver</span>
         <span data-k="collect">Collect</span>
       </div>
+      <div id="h-group"></div>
       <div class="cats" id="cats"></div>
       <h2 id="h2">Open now</h2>
       <p class="sub" id="sub">Tap a shop, then add another. They travel together.</p>
@@ -427,43 +431,97 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
      Every screen below reads this object. Nothing keeps a second copy of it,
      which is the whole point: the counter packs what the customer picked.
      ========================================================================= */
-  var SHOP = {
-    id:21, name:'Clicks Pharmacy', category:'Pharmacy',
-    where:'Clicks Game City, Game City Mall, Kgale View, Gaborone',
-    person:'Lesego', till:'71 000 000',
-    min:5000, fee:1500
+  /* Four shops the customer can actually order from, so "add another shop" is a
+     real action rather than a promise. Prices are PROTOTYPE figures except where
+     noted: only KFC publishes Pula prices on a Botswana domain (see
+     docs/research/merchant-sources.md), so nothing here should be quoted to a
+     customer as a live price. Delivery fees are the real ones from
+     merchants_database.json. */
+  var SHOPS = {
+    21: {id:21, name:'Clicks Pharmacy', category:'Pharmacy', temp:'pharmacy',
+         where:'Game City Mall, Kgale View', person:'Lesego', till:'71 000 000',
+         min:5000, fee:1500, prep:20, km:4.1},
+    7:  {id:7,  name:'KFC', category:'Restaurants', temp:'hot',
+         where:'Game City Mall', person:'Tebogo', till:'71 000 001',
+         min:4000, fee:1000, prep:18, km:4.0},
+    1:  {id:1,  name:"Nando's", category:'Restaurants', temp:'hot',
+         where:'Square Mart Mall, CBD', person:'Amo', till:'71 000 002',
+         min:5000, fee:1500, prep:22, km:2.6},
+    13: {id:13, name:'Choppies', category:'Supermarket', temp:'ambient',
+         where:'Riverwalk', person:'Kagiso', till:'71 000 003',
+         min:8000, fee:2500, prep:35, km:5.2}
   };
-  var MENU = [
-    {id:2101, name:'Panado Paracetamol Tablets 50s', desc:'For mild to moderate pain relief', thebe:3590},
-    {id:2102, name:'Elastoplast Fabric Plasters 20s', desc:'Breathable wound protection', thebe:2250}
-  ];
+  var MENUS = {
+    21: [{id:2101, name:'Panado Paracetamol Tablets 50s', desc:'For mild to moderate pain relief', thebe:3590},
+         {id:2102, name:'Elastoplast Fabric Plasters 20s', desc:'Breathable wound protection', thebe:2250}],
+    7:  [{id:701,  name:'Streetwise Two', desc:'2 pieces of chicken and chips', thebe:5500},
+         {id:702,  name:'Zinger Burger Meal', desc:'Burger, chips and a drink', thebe:7900}],
+    1:  [{id:101,  name:'Quarter Chicken, Lemon and Herb', desc:'With one side', thebe:8900},
+         {id:102,  name:'Peri-Peri Chips, large', desc:'To share, in theory', thebe:3500}],
+    13: [{id:1301, name:'Fresh Milk 2L', desc:'Full cream', thebe:2890},
+         {id:1302, name:'Brown Bread', desc:'Sliced', thebe:1450},
+         {id:1303, name:'Vanilla Ice Cream 2L', desc:'Chilled, travels last', thebe:5990}]
+  };
+  /* The shop currently being browsed. The BASKET is not tied to it, which is the
+     whole point: opening another shop does not disturb what is already in it. */
+  var SHOP = SHOPS[21];
+  var MENU = MENUS[21];
 
   var basket = {
-    q:{}, shopId:null, ref:null,
-    add:function(p){
-      if(this.shopId === null){ this.shopId = SHOP.id; this.ref = 'SC-4417'; }
-      this.q[p.id] = (this.q[p.id]||0)+1; changed();
+    /* shopId -> { qty by product id }. One group per shop, never cleared by
+       visiting another shop. The old basket had a single shopId and emptied
+       itself when you changed your mind, which is the behaviour Luther asked
+       to be rid of. */
+    groups:{}, ref:null,
+    _g:function(id){ if(!this.groups[id]) this.groups[id] = {}; return this.groups[id]; },
+    add:function(p, shopId){
+      var id = shopId || SHOP.id;
+      if(this.ref === null) this.ref = 'SC-4417';
+      var g = this._g(id); g[p.id] = (g[p.id]||0)+1; changed();
     },
-    less:function(p){
-      var n = this.q[p.id]||0;
-      if(n <= 1){ delete this.q[p.id]; } else { this.q[p.id] = n-1; }
-      if(this.count() === 0){ this.shopId = null; this.ref = null; }
+    less:function(p, shopId){
+      var id = shopId || SHOP.id, g = this._g(id), n = g[p.id]||0;
+      if(n <= 1){ delete g[p.id]; } else { g[p.id] = n-1; }
+      if(Object.keys(g).length === 0) delete this.groups[id];
+      if(this.count() === 0) this.ref = null;
       changed();
     },
-    rows:function(){
-      var out = [];
-      MENU.forEach(function(p){ if(basket.q[p.id]) out.push({p:p,n:basket.q[p.id]}); });
-      return out;
+    shopIds:function(){ return Object.keys(this.groups).map(Number); },
+    shops:function(){ return this.shopIds().map(function(id){ return SHOPS[id]; }); },
+    /* rows for ONE shop, defaulting to the one being browsed */
+    rows:function(shopId){
+      var id = shopId || SHOP.id, g = this.groups[id] || {};
+      return (MENUS[id]||[]).filter(function(p){ return g[p.id]; })
+                            .map(function(p){ return {p:p, n:g[p.id]}; });
     },
-    count:function(){ var t=0; for(var k in this.q) t += this.q[k]; return t; },
-    goods:function(){ var t=0; this.rows().forEach(function(r){ t += r.p.thebe*r.n; }); return t; },
-    clear:function(){ this.q = {}; this.shopId = null; this.ref = null; changed(); }
+    countIn:function(id){ var t=0, g=this.groups[id]||{}; for(var k in g) t += g[k]; return t; },
+    count:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.countIn(id); }); return t; },
+    goodsIn:function(id){ var t=0; this.rows(id).forEach(function(r){ t += r.p.thebe*r.n; }); return t; },
+    goods:function(){ var t=0, b=this; this.shopIds().forEach(function(id){ t += b.goodsIn(id); }); return t; },
+    removeShop:function(id){ delete this.groups[id]; if(this.count()===0) this.ref=null; changed(); },
+    clear:function(){ this.groups = {}; this.ref = null; changed(); }
   };
+
+  /* ONE delivery fee, however many shops. Uber Eats multi-store and DoorDash
+     DoubleDash both charge nothing extra for the second shop, and that is the
+     whole commercial move: charge twice and the customer does the sum and goes
+     back to ordering once. Sprint charges the highest single shop fee, once. */
+  function deliveryFee(){
+    var shops = basket.shops();
+    if(!shops.length) return 0;
+    return Math.max.apply(null, shops.map(function(s){ return s.fee; }));
+  }
+  /* What separate orders would have cost, so the saving can be shown. */
+  function separateFees(){
+    return basket.shops().reduce(function(t,s){ return t + s.fee; }, 0);
+  }
+  function saving(){ return Math.max(0, separateFees() - deliveryFee()); }
+
   basket.add(MENU[0]);   /* the demo opens mid life, with one thing already picked */
 
   function P(t){ return 'P' + (t/100).toFixed(2); }
-  function total(){ return basket.goods() + SHOP.fee; }
-  function short(){ return Math.max(0, SHOP.min - basket.goods()); }
+  function total(){ return basket.goods() + deliveryFee(); }
+  function short(){ return Math.max(0, SHOP.min - basket.goodsIn(SHOP.id)); }
 
   /* one redraw for every screen that reads the basket */
   function changed(){ try{ drawShop(); drawPay(); cDraw(); drawHomeBasket(); drawPip(); }catch(e){} }
@@ -531,8 +589,17 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
   drawShops(shown());
   $('shops').onclick = function(e){
     var r = e.target.closest('.shop'); if (!r) return;
-    var s = shown()[+r.getAttribute('data-i')];
-    if (s && s.go) show('shop');
+    var picked = shown()[+r.getAttribute('data-i')];
+    if (!picked) return;
+    /* find the shop by name among the four that have a menu. Opening it NEVER
+       touches what is already in the basket, which is the behaviour the whole
+       multi-shop idea rests on. */
+    var match = null;
+    for (var k in SHOPS) if (SHOPS[k].name === picked.name) match = SHOPS[k];
+    if (!match) return;
+    SHOP = match; MENU = MENUS[match.id];
+    drawShopHeader(); changed();
+    show('shop');
   };
   var collecting = false;
   $('seg').onclick = function(e){
@@ -546,20 +613,87 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
       : 'No ratings. Sprint has never collected one. Tap a shop to place an order.';
     drawShops(shown());
   };
+  /* GROUP ORDER. The strongest unbuilt idea in the research: one person starts
+     the basket, sends the link to the family group on WhatsApp, and everybody
+     adds their own food from whichever shop they want. In Botswana this is
+     stronger than anywhere else, because WhatsApp IS the family group and the
+     link opens without anybody installing anything. */
+  var group = { open:false, people:[] };
+  var GUESTS = [
+    {who:'Thato', shop:7,  item:701,  said:'Thato added Streetwise Two from KFC'},
+    {who:'Mama', shop:21, item:2101, said:'Mama added Panado from Clicks'},
+    {who:'Boitumelo', shop:1, item:101, said:"Boitumelo added a quarter chicken from Nando's"}
+  ];
+  function groupLink(){ return 'sprint.co.bw/j/' + (basket.ref || 'SC-4417').toLowerCase(); }
+  function drawGroup(){
+    var el = $('h-group');
+    if (!group.open){
+      el.innerHTML = '<div class="pitch" style="margin:14px 0 0;cursor:pointer" id="g-start">'
+        + '<b>Ordering for the whole house?</b>'
+        + '<span>Send one link. Everyone adds what they want, from any shop. '
+        + 'You pay once and it all arrives together.</span></div>';
+      $('g-start').onclick = function(){
+        group.open = true; group.people = []; drawGroup();
+      };
+      return;
+    }
+    var joined = group.people.map(function(p){
+      return '<div style="display:flex;gap:8px;padding:3px 0;font-size:13px">'
+        + '<b style="flex:1;font-weight:600">' + p.who + '</b>'
+        + '<span style="color:var(--sub)">' + p.said.replace(p.who + ' added ', '') + '</span></div>';
+    }).join('');
+    var next = GUESTS[group.people.length];
+    el.innerHTML = '<div class="proof" style="margin:14px 0 0">'
+      + '<b style="display:block;margin-bottom:6px">Group order ' + (basket.ref || 'SC-4417') + '</b>'
+      + '<div style="font-size:12px;color:var(--sub);word-break:break-all;margin-bottom:8px">'
+      + groupLink() + '</div>'
+      + (joined || '<div style="font-size:13px;color:var(--faint)">Nobody has added anything yet.</div>')
+      + (next
+          ? '<button class="gbtn" id="g-next">Send the link to ' + next.who + '</button>'
+          : '<div style="margin-top:8px;font-size:13px;color:var(--green);font-weight:600">'
+            + 'Everyone has ordered. ' + basket.shops().length + ' shops, one delivery, one bill.</div>')
+      + '<button class="gbtn ghost" id="g-close">Close the group order</button></div>';
+    if ($('g-next')) $('g-next').onclick = function(){
+      var g = GUESTS[group.people.length];
+      /* a real person adding a real item to a real shop group in the basket */
+      var item = null; (MENUS[g.shop]||[]).forEach(function(m){ if (m.id === g.item) item = m; });
+      if (item) basket.add(item, g.shop);
+      group.people.push(g);
+      drawGroup();
+    };
+    if ($('g-close')) $('g-close').onclick = function(){ group.open = false; drawGroup(); };
+  }
+
   function drawHomeBasket(){
-    var n = basket.count();
-    $('h-basket').innerHTML = n === 0 ? '' :
-      '<div class="proof" style="margin:18px 0 0;cursor:pointer" id="h-b">' + n +
-      (n === 1 ? ' item' : ' items') + ' waiting at ' + SHOP.name + ', ' + P(basket.goods()) +
-      ' &#183; ' + basket.ref + '.<br><b style="color:var(--green)">Add another shop and it comes '
-      + 'in the same delivery, at no extra delivery fee.</b></div>';
+    drawGroup();
+    var n = basket.count(), shops = basket.shops();
+    if (n === 0){ $('h-basket').innerHTML = ''; return; }
+    var lines = shops.map(function(sh){
+      return '<div style="display:flex;gap:8px;padding:2px 0"><b style="flex:1;font-weight:600">'
+        + sh.name + '</b><span style="color:var(--sub)">' + basket.countIn(sh.id)
+        + (basket.countIn(sh.id) === 1 ? ' item' : ' items') + '</span>'
+        + '<span style="font-variant-numeric:tabular-nums">' + P(basket.goodsIn(sh.id)) + '</span></div>';
+    }).join('');
+    var promise = shops.length === 1
+      ? '<b style="color:var(--green)">Add another shop. It comes in the same delivery, '
+        + 'and the delivery fee does not change.</b>'
+      : '<b style="color:var(--green)">' + shops.length + ' shops, arriving together. One fee of '
+        + P(deliveryFee()) + (saving() > 0 ? ', so you save ' + P(saving()) + ' on separate deliveries.' : '.') + '</b>';
+    $('h-basket').innerHTML = '<div class="proof" style="margin:18px 0 0;cursor:pointer" id="h-b">'
+      + lines + '<div style="margin-top:6px">' + promise + '</div></div>';
     var el = $('h-b'); if (el) el.onclick = function(){ show('shop'); };
   }
+
 
   /* ---------- the shop, where the basket is filled ---------- */
   $('sh-where').textContent = SHOP.where;
   $('sh-name').textContent = SHOP.name;
-  $('sh-terms').innerHTML = 'Minimum ' + P(SHOP.min) + ' &#183; delivery ' + P(SHOP.fee);
+  function drawShopHeader(){
+    $('sh-name').textContent = SHOP.name;
+    $('sh-terms').innerHTML = 'Minimum ' + P(SHOP.min) + ' &#183; delivery ' + P(SHOP.fee)
+      + (basket.shops().length > 1 ? ' &#183; <b style="color:var(--green)">joins your delivery</b>' : '');
+  }
+  drawShopHeader();
   function drawShop(){
     $('sh-menu').innerHTML = MENU.map(function(p){
       var n = basket.q[p.id]||0;
@@ -574,9 +708,9 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
       : 'Nothing picked yet, so there is no order number. A number is made when the first item goes in.';
     var n = basket.count(), s = short();
     $('sh-msg').innerHTML = n === 0
-      ? 'Minimum ' + P(SHOP.min) + ', delivery ' + P(SHOP.fee)
+      ? 'Minimum ' + P(SHOP.min) + ', delivery ' + P(SHOP.fee) + ' for this shop'
       : (s > 0 ? '<span style="color:var(--red)">Add ' + P(s) + ' more to reach the ' + P(SHOP.min) + ' minimum</span>'
-               : P(basket.goods()) + ' goods and ' + P(SHOP.fee) + ' delivery');
+               : P(basket.goods()) + ' goods and ' + P(deliveryFee()) + ' delivery');
     $('sh-count').textContent = n === 0 ? 'Add something to start' : n + (n === 1 ? ' item' : ' items');
     $('sh-total').textContent = n === 0 ? '' : P(total());
     $('sh-go').disabled = (n === 0 || s > 0);
@@ -642,7 +776,10 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
 
     $('p-money').innerHTML =
       '<div><span>Goods</span><b>' + P(basket.goods()) + '</b></div>' +
-      '<div><span>Delivery</span><b>' + P(SHOP.fee) + '</b></div>' +
+      '<div><span>Delivery</span><b>' + P(deliveryFee()) + '</b>' +
+      (saving() > 0 ? '<small style="display:block;color:var(--green);font-weight:600">'
+        + basket.shops().length + ' shops, one fee. You save ' + P(saving()) + '</small>' : '')
+      + '</div>' +
       '<div style="font-size:15px;color:#111"><b>Total</b><b>' + P(total()) + '</b></div>';
 
     var cashOk = pay.rail !== 'cash' || (pay.tender !== null && changeFor(total(), pay.tender) !== null);
@@ -762,7 +899,7 @@ i.src="https://hits.sh/94luther.github.io/sprint-demo/886dace350f4504a.svg?t="+D
 
   /* ---------- the order, through the real engine, on the real basket ---------- */
   var ORDER = { order_id:'SC-4417', merchant_id:'m2', merchant_name:SHOP.name,
-                goods:basket.goods(), delivery_fee:SHOP.fee, rail:'myzaka',
+                goods:basket.goods(), delivery_fee:deliveryFee(), rail:'myzaka',
                 fault:'none', delivered:false, perishable:true };
   var HAPPY = [
     ['pay_succeeded','system','Naledi pays'],
