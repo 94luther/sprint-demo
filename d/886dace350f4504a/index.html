@@ -109,6 +109,25 @@
          padding:15px 16px;margin:14px 0}
   .ccode small{display:block;font-size:11.5px;color:var(--sub)}
   .ccode b{display:block;font-size:31px;font-weight:800;letter-spacing:5px;color:#05462E;margin:5px 0 4px}
+  /* the counter's collection queue */
+  .cq .q{display:flex;align-items:center;gap:8px;background:#F2F3F2;border-radius:13px;
+         height:44px;padding:0 13px;margin:2px 0 10px}
+  .cq .q input{flex:1;border:0;background:transparent;outline:none;font:inherit;font-size:16px;
+               letter-spacing:3px;font-weight:700}
+  .cq .row{display:flex;gap:11px;align-items:center;padding:11px 0;border-top:1px solid var(--hair)}
+  .cq .row .c{flex:none;font-size:17px;font-weight:800;letter-spacing:2px;color:#05462E;
+              font-variant-numeric:tabular-nums}
+  .cq .row.done .c{color:var(--faint);text-decoration:line-through}
+  .cq .row .t{flex:1;min-width:0}
+  .cq .row .t b{display:block;font-size:13px;font-weight:700}
+  .cq .row .t small{display:block;font-size:11.5px;color:var(--sub);margin-top:1px}
+  .cq .row button{flex:none;border:0;background:#05462E;color:#fff;border-radius:999px;
+                  padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}
+  .cq .row.done button{background:#E8E9E8;color:var(--faint);cursor:default}
+  .cq .note{border-radius:12px;padding:10px 12px;font-size:12.5px;margin:8px 0 0}
+  .cq .note.good{background:#EAF6EC;color:#14532d}
+  .cq .note.bad{background:#FDECEA;color:#7f1d1d}
+  .cq .none{color:var(--sub);font-size:12.5px;padding:10px 0}
 
   /* ---- brand furniture: a logo is CONTAINED, a photograph is COVERED ---- */
   .appbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;background:#fff}
@@ -562,6 +581,10 @@
         <span data-g="660">11 min ago</span>
       </div>
 
+      <h2 style="margin-top:30px">Waiting to be collected</h2>
+      <p class="sub">Somebody is coming for these. Ask for the six digits, never for a name.</p>
+      <div class="cq" id="c-collect"></div>
+
       <h2 style="margin-top:30px" id="c-pickhead">Pick</h2>
       <div id="c-pick"></div>
       <div class="proof" id="c-proof"></div>
@@ -760,7 +783,7 @@
     _g:function(id){ if(!this.groups[id]) this.groups[id] = {}; return this.groups[id]; },
     add:function(p, shopId){
       var id = shopId || SHOP.id;
-      if(this.ref === null) this.ref = 'SC-4417';
+      if(this.ref === null) this.ref = nextRef();
       var g = this._g(id); g[p.id] = (g[p.id]||0)+1; changed();
     },
     less:function(p, shopId){
@@ -825,7 +848,8 @@
      says which draw failed and why, and keeps drawing the rest. */
   function changed(){
     [['drawShop',drawShop],['drawPay',drawPay],['cDraw',cDraw],
-     ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip],['drawBar',drawBar]].forEach(function(p){
+     ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip],['drawBar',drawBar],
+     ['drawCollections',drawCollections]].forEach(function(p){
       try { p[1](); } catch(e){ console.error('render failed in ' + p[0] + ': ' + e.message); }
     });
   }
@@ -1200,6 +1224,13 @@
      problem in Botswana delivery, which is that a plot number does not find
      a house. No competitor in Gaborone has premises to offer.
      ======================================================================= */
+  /* Every order gets its OWN number. It used to be the constant SC-4417, which meant
+     the collection code was a function of the branch alone: every customer collecting
+     at Maun was handed 373284. Unique references make unique codes. It is still not a
+     server issuing and revoking them, which is the only real answer. */
+  var REF_SEQ = 4417;
+  function nextRef(){ REF_SEQ += 1; return 'SC-' + REF_SEQ; }
+
   var fulfil = { mode: 'deliver', branch: null };
   function isCollect(){ return fulfil.mode === 'collect'; }   /* not `collecting`: a legacy `var collecting = false` below would overwrite it */
   function branchById(id){
@@ -1260,6 +1291,70 @@
     $('bsheet').className = 'sheet';
     changed();
   };
+  /* ---------------------------------------------------------------------
+     A7.  ONE authoritative state lives in the engine. What the customer reads
+     is derived from it, never set separately, so the two can never disagree.
+     A collect order has no last mile: the rider's journey ends at the counter,
+     and the bag then waits for a person, not for a gate.
+     --------------------------------------------------------------------- */
+  var COLLECT_WORDS = {
+    placed:                'Order placed',
+    paid:                  'Paid',
+    dispatch_offered:      'Finding a rider for the shops',
+    dispatch_accepted:     'Rider on the way to the shops',
+    at_merchant:           'Collecting from the shops',
+    picked_up:             'On its way to the branch',
+    at_door:               'Ready to collect',
+    delivered:             'Collected',
+    closed:                'Collected',
+    stock_problem:         'A shop cannot supply',
+    address_problem:       'A problem with the branch',
+    customer_absent:       'Waiting for you at the counter',
+    rider_failed:          'Held up on the way to the branch',
+    returning:             'Coming back',
+    returned:              'Returned',
+    refund_due:            'Refund due',
+    cancelled:             'Cancelled'
+  };
+  function customerStatus(st, F){
+    if (!F || F.mode !== 'collect') return st.replace(/_/g, ' ');
+    return COLLECT_WORDS[st] || st.replace(/_/g, ' ');
+  }
+  function readyToCollect(st){
+    return ['at_door', 'delivered', 'closed'].indexOf(st) >= 0;
+  }
+
+  /* ---------------------------------------------------------------------
+     A8.  The counter has to be able to find a bag. Every placed collect order
+     joins this queue; handing one over marks the code used so a second person
+     cannot present the same digits.
+     --------------------------------------------------------------------- */
+  var COLLECTIONS = [];
+  function registerCollection(o){
+    if (!o.fulfilment || o.fulfilment.mode !== 'collect') return;
+    for (var i = 0; i < COLLECTIONS.length; i++)
+      if (COLLECTIONS[i].ref === o.order_id) return;      /* never twice */
+    COLLECTIONS.push({
+      ref: o.order_id, code: o.fulfilment.code,
+      branch: o.fulfilment.branch ? o.fulfilment.branch.name : '',
+      town: o.fulfilment.branch ? o.fulfilment.branch.town : '',
+      shops: (o.deliveries || []).map(function(d){ return d.merchant_name; }),
+      items: (o.deliveries || []).reduce(function(t, d){ return t + (d.items || []).length; }, 0),
+      goods: o.goods, placed: o.placed_at, used: false, usedAt: null
+    });
+  }
+  function redeem(code){
+    for (var i = 0; i < COLLECTIONS.length; i++){
+      var c = COLLECTIONS[i];
+      if (c.code === code){
+        if (c.used) return {ok: false, why: 'already', row: c};
+        c.used = true; c.usedAt = new Date().toISOString();
+        return {ok: true, row: c};
+      }
+    }
+    return {ok: false, why: 'unknown'};
+  }
+
   /* a six character code the customer shows at the counter */
   function collectionCode(){
     var seed = (basket.ref || 'SC-4417') + (fulfil.branch ? fulfil.branch.id : '');
@@ -1591,6 +1686,14 @@
        kept its first merchant and its first delivery fee for ever, so the screen
        could show one thing and the engine settle another. */
     ORDER = snapshotOrder();
+    registerCollection(ORDER);        /* A8: the counter can now find this bag */
+    /* The basket has to EMPTY once it is an order. It did not, so a second order
+       carried the first one's items and charged for them again: the counter queue
+       showed SC-4419 holding P120.00 when one meal had been ordered. */
+    basket.groups = {}; basket.ref = null; fulfil = { mode:'deliver', branch:null };
+    changed();                        /* nothing had redrawn after this, so the counter
+                                         queue was one order behind and the basket still
+                                         looked full */
     oReset(HAPPY); show('order');
   };
 
@@ -1617,6 +1720,49 @@
     if (secs >= ACCEPT) return 'late';
     return 'waiting';
   }
+  function drawCollections(){
+    var box = $('c-collect');
+    if (!COLLECTIONS.length){
+      box.innerHTML = '<p class="none">Nothing waiting. Place an order on the Basket tab and ' +
+        'choose <b>I will collect it</b>, and it appears here.</p>';
+      return;
+    }
+    var msg = box.getAttribute('data-msg') || '';
+    box.innerHTML =
+      '<div class="q"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#8d918f;fill:none;stroke-width:2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>' +
+      '<input id="c-code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off"></div>' +
+      COLLECTIONS.map(function(c){
+        return '<div class="row' + (c.used ? ' done' : '') + '"><span class="c">' + c.code + '</span>' +
+          '<div class="t"><b>' + c.ref + ' &#183; ' + (c.branch || '') + '</b>' +
+          '<small>' + (c.shops.join(', ') || 'one shop') + ' &#183; ' + c.items +
+          (c.items === 1 ? ' item' : ' items') + ' &#183; ' + P(c.goods) + '</small></div>' +
+          (c.used ? '<button disabled>Handed over</button>'
+                  : '<button data-hand="' + c.code + '">Hand over</button>') + '</div>';
+      }).join('') + msg;
+    box.removeAttribute('data-msg');
+  }
+  $('c-collect').onclick = function(e){
+    var b = e.target.closest('[data-hand]'); if (!b) return;
+    var res = redeem(b.getAttribute('data-hand'));
+    $('c-collect').setAttribute('data-msg', res.ok
+      ? '<div class="note good">Handed over. ' + res.row.ref + ' is closed and this code will not work again.</div>'
+      : '<div class="note bad">That code has already been used.</div>');
+    drawCollections();
+  };
+  $('c-collect').addEventListener('input', function(e){
+    if (!e.target || e.target.id !== 'c-code') return;
+    var v = e.target.value.replace(/\D/g, '');
+    if (v.length < 6) return;
+    var res = redeem(v);
+    $('c-collect').setAttribute('data-msg', res.ok
+      ? '<div class="note good">Found it. ' + res.row.ref + ', ' + res.row.shops.join(', ') +
+        '. Hand it over and it is closed.</div>'
+      : '<div class="note bad">' + (res.why === 'already'
+          ? 'That code has already been used. Do not hand anything over.'
+          : 'No bag here with that code. Check the digits.') + '</div>');
+    drawCollections();
+  });
+
   function cDraw(){
     $('c-shop').textContent = SHOP.name + ', Game City';
     var rows = basket.rows();
@@ -1768,9 +1914,13 @@
     var done = state === 'closed';
     var broken = ['stock_problem','address_problem','customer_absent','rider_failed','returning','returned','refund_due','cancelled'].indexOf(state) >= 0;
     var big = $('o-big');
-    big.textContent = state.replace(/_/g,' ');
+    big.textContent = customerStatus(state, ORDER.fulfilment);
     big.className = 'big' + (done ? ' green' : (broken ? ' red' : ''));
-    $('o-head').textContent = 'Order ' + (basket.ref || 'SC-4417') + ', from ' + SHOP.name;
+    /* the ORDER's number, not the live basket's. The basket moves on; the order
+       does not. Same mistake as the collection code, one line further down. */
+    $('o-head').textContent = 'Order ' + ORDER.order_id +
+      ', from ' + ((ORDER.deliveries && ORDER.deliveries.length > 1)
+        ? ORDER.deliveries.length + ' shops' : (ORDER.merchant_name || SHOP.name));
     var F = ORDER.fulfilment || {mode:'deliver'};
     var isColl = F.mode === 'collect';
     $('o-under').textContent = basket.count() + (basket.count() === 1 ? ' item' : ' items') + ', ' +
@@ -1791,12 +1941,21 @@
     var seen = ['paid','dispatch_offered','dispatch_accepted','at_merchant','picked_up','at_door','delivered','closed'].indexOf(state) >= 0;
     $('o-cust').textContent = done ? 'Delivered' : (broken ? 'Being told' : (seen ? 'Tracking' : 'Waiting'));
     $('o-cust2').textContent = done ? 'Parcel photo kept 90 days. ID number never stored.' : '';
+    if (isColl && readyToCollect(state) && !done){
+      $('o-cust').textContent = 'Ready';
+      $('o-cust2').textContent = F.branch ? 'Waiting for you at ' + F.branch.name : '';
+    }
     $('o-shop').textContent = state === 'placed' ? 'Nothing yet' : (state === 'stock_problem' ? 'Cannot supply' : (seen ? 'Accepted' : 'Waiting'));
     $('o-shop2').textContent = 'two minutes to accept';
     var carrying = ['dispatch_accepted','at_merchant','picked_up','at_door','returning'].indexOf(state) >= 0;
     if (isColl){
       /* nobody is riding: the customer is. Saying "Not assigned" reads as a fault. */
-      $('o-rider').textContent = done ? 'Collected' : 'You are collecting';
+      /* 'done' is only the closed state, but delivered already means the customer has it.
+         Saying "Collected" at the top and "Waiting at the counter" underneath is the
+         same contradiction the review found on the delivery side. */
+      var gone = (state === 'delivered' || state === 'closed');
+      $('o-rider').textContent = gone ? 'Collected'
+        : (readyToCollect(state) ? 'Waiting at the counter' : 'Being brought to the branch');
       /* many branches ARE their town, so "Maun, Maun" must not happen */
       $('o-rider2').textContent = !F.branch ? ''
         : (F.branch.town && F.branch.town !== F.branch.name)
