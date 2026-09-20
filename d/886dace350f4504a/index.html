@@ -585,6 +585,8 @@
         <div class="cell"><small>The office</small><b id="o-office">Nobody at fault</b><span id="o-office2"></span></div>
       </div>
 
+      <div class="ccode" id="o-code" hidden></div>
+
       <div class="money" id="o-money" hidden></div>
 
       <h2 style="margin-top:28px">What the engine did</h2>
@@ -1709,6 +1711,15 @@
       goods: basket.goods(), delivery_fee: deliveryFee(),
       separate_fees: separateFees(), saving: saving(),
       rail: (typeof pay !== 'undefined' && pay.rail) || 'myzaka',
+      /* Frozen here on purpose. A collection code that changes when the basket
+         changes is worse than no code: the customer shows one thing at the
+         counter and the counter is holding another. */
+      fulfilment: (typeof fulfil === 'undefined') ? {mode:'deliver'} : {
+        mode: fulfil.mode,
+        branch: fulfil.branch ? {name: fulfil.branch.name, town: fulfil.branch.town,
+                                 address: fulfil.branch.address} : null,
+        code: (fulfil.mode === 'collect') ? collectionCode() : null
+      },
       fault:'none', delivered:false, perishable:true
     };
   }
@@ -1760,8 +1771,22 @@
     big.textContent = state.replace(/_/g,' ');
     big.className = 'big' + (done ? ' green' : (broken ? ' red' : ''));
     $('o-head').textContent = 'Order ' + (basket.ref || 'SC-4417') + ', from ' + SHOP.name;
+    var F = ORDER.fulfilment || {mode:'deliver'};
+    var isColl = F.mode === 'collect';
     $('o-under').textContent = basket.count() + (basket.count() === 1 ? ' item' : ' items') + ', ' +
-      P(ORDER.goods) + ' of goods and ' + P(ORDER.delivery_fee) + ' delivery, paid on ' + ORDER.rail + '.';
+      P(ORDER.goods) + ' of goods' +
+      (isColl ? ', no delivery fee, paid on ' : ' and ' + P(ORDER.delivery_fee) + ' delivery, paid on ') +
+      ORDER.rail + '.';
+    /* the collection code, read from the snapshot so it never moves */
+    var cc = $('o-code');
+    if (isColl && F.code){
+      cc.hidden = false;
+      cc.innerHTML = '<small>' + T('collect.code') + '</small><b>' + F.code + '</b>' +
+        '<small>' + T('collect.code.help') + '</small>' +
+        (F.branch ? '<small style="margin-top:8px;color:#05462E;font-weight:700">' +
+          T('collect.at', {b: F.branch.name}) + (F.branch.address ? ' &#183; ' + F.branch.address : '') +
+          '</small>' : '');
+    } else { cc.hidden = true; cc.innerHTML = ''; }
 
     var seen = ['paid','dispatch_offered','dispatch_accepted','at_merchant','picked_up','at_door','delivered','closed'].indexOf(state) >= 0;
     $('o-cust').textContent = done ? 'Delivered' : (broken ? 'Being told' : (seen ? 'Tracking' : 'Waiting'));
@@ -1769,8 +1794,17 @@
     $('o-shop').textContent = state === 'placed' ? 'Nothing yet' : (state === 'stock_problem' ? 'Cannot supply' : (seen ? 'Accepted' : 'Waiting'));
     $('o-shop2').textContent = 'two minutes to accept';
     var carrying = ['dispatch_accepted','at_merchant','picked_up','at_door','returning'].indexOf(state) >= 0;
-    $('o-rider').textContent = carrying ? state.replace(/_/g,' ') : (done ? 'Free' : 'Not assigned');
-    $('o-rider2').textContent = carrying ? 'sees five fields, nothing about who she is' : '';
+    if (isColl){
+      /* nobody is riding: the customer is. Saying "Not assigned" reads as a fault. */
+      $('o-rider').textContent = done ? 'Collected' : 'You are collecting';
+      /* many branches ARE their town, so "Maun, Maun" must not happen */
+      $('o-rider2').textContent = !F.branch ? ''
+        : (F.branch.town && F.branch.town !== F.branch.name)
+            ? F.branch.name + ', ' + F.branch.town : F.branch.name;
+    } else {
+      $('o-rider').textContent = carrying ? state.replace(/_/g,' ') : (done ? 'Free' : 'Not assigned');
+      $('o-rider2').textContent = carrying ? 'sees five fields, nothing about who she is' : '';
+    }
     $('o-office').textContent = fault === 'none' ? 'Nobody at fault' : 'Fault: ' + fault;
 
     var m = $('o-money');
