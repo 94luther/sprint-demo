@@ -93,6 +93,14 @@ var STRINGS = {
     "collect.othertown": "Collect in another town",
     "collect.othertown.sub": "Sprint runs to {t} towns every working day. Order here, collect there.",
     "collect.nobranch": "No branch matches that. Try a town name.",
+    "collect.shops.one": "1 shop, one collection",
+    "collect.shops.many": "{n} shops, one collection, one code",
+    "hot.title": "Hot food waits at the counter",
+    "hot.body": "{shops} will be sealed hot and left at {branch}. A bag on a counter has no idea when you are coming. Collect soon, or have it brought to you.",
+    "hot.switch": "Bring it to me instead",
+    "town.title": "Order here, collect there",
+    "town.body": "Sprint runs to {t} towns every working day. Order in Gaborone, collect in Francistown, Maun or anywhere else on the network.",
+    "town.cta": "See the {t} towns",
 
     /* checkout */
     "pay.address": "Where the rider goes",
@@ -191,7 +199,15 @@ var STRINGS = {
     "collect.ready": "Re tla go itsise fa e siame",     /* check */
     "collect.othertown": "E tsee kwa toropong e nngwe", /* check */
     "collect.othertown.sub": "Sprint e tsamaya kwa ditoropong tse {t} letsatsi lengwe le lengwe la tiro. Reka fa, o tsee koo.",  /* ASK */
-    "collect.nobranch": "Ga go na lekala le le tshwanang le seo. Leka leina la toropo.",  /* check */
+    "collect.nobranch": "Ga go na lekala le le tshwanang le seo. Leka leina la toropo.",
+    "collect.shops.one": "Lebenkele le le 1, go tsaya ga le lengwe",          /* check */
+    "collect.shops.many": "Mabenkele a le {n}, go tsaya ga le lengwe, nomoro e le nngwe",  /* check */
+    "hot.title": "Dijo tse di molelo di letile kwa counter",                  /* ASK */
+    "hot.body": "{shops} di tla tswalelwa di le molelo mme di tlogelwe kwa {branch}. Tsaya ka bonako, kgotsa di tlisetswe wena.",  /* ASK */
+    "hot.switch": "E tlisetswe nna go na le moo",                             /* check */
+    "town.title": "Reka fa, o tsee koo",                                      /* check */
+    "town.body": "Sprint e tsamaya kwa ditoropong tse {t} letsatsi lengwe le lengwe la tiro. Reka mo Gaborone, o tsee kwa Francistown, Maun kgotsa gongwe le gongwe.",  /* ASK */
+    "town.cta": "Bona ditoropo tse {t}",                                      /* check */  /* check */
 
     /* checkout */
     "pay.address": "Kwa morwalo a yang teng",           /* ASK */

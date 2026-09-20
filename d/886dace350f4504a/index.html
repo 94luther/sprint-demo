@@ -128,6 +128,23 @@
   .cq .note.good{background:#EAF6EC;color:#14532d}
   .cq .note.bad{background:#FDECEA;color:#7f1d1d}
   .cq .none{color:var(--sub);font-size:12.5px;padding:10px 0}
+  /* A10: the freshness warning on a collect basket */
+  .hotwarn{background:#FFF8EC;border:1px solid rgba(217,130,24,.28);border-radius:16px;
+           padding:13px 15px;margin:2px 0 10px}
+  .hotwarn b{display:block;font-size:13.5px;font-weight:700;color:#8a5a00}
+  .hotwarn p{margin:5px 0 0;font-size:12.5px;line-height:1.5;color:#7a5410}
+  .hotwarn button{margin-top:9px;border:1px solid rgba(217,130,24,.4);background:#fff;
+                  color:#8a5a00;border-radius:999px;padding:7px 13px;font:inherit;
+                  font-size:12px;font-weight:700;cursor:pointer}
+  /* A11: the towns card on the home screen */
+  .towns{margin:22px 16px 0;background:linear-gradient(135deg,#0F5A2E,#1B7A3E);border-radius:20px;
+         padding:18px 19px;color:#fff;cursor:pointer;position:relative;overflow:hidden}
+  .towns b{display:block;font-size:19px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
+  .towns p{margin:6px 0 0;font-size:13px;line-height:1.55;color:rgba(255,255,255,.88);max-width:36ch}
+  .towns .go{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:#fff;
+             color:#0F5A2E;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:800}
+  .towns .n{position:absolute;right:-8px;top:-14px;font-size:96px;font-weight:800;
+            color:rgba(255,255,255,.10);letter-spacing:-5px;line-height:1}
 
   /* ---- brand furniture: a logo is CONTAINED, a photograph is COVERED ---- */
   .appbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;background:#fff}
@@ -477,6 +494,9 @@
           <a class="hs" data-act="cat:Parcels"     aria-label="Parcels"   style="left:76%;top:7%;width:22.2%;height:86%"></a>
         </div>
       </div>
+      <!-- A11. 45 towns, and it was invisible: buried three taps into the basket.
+           Gabs Eats, Wanzy and Zebras reach one town between them. -->
+      <div class="towns" id="towns"></div>
       <!-- and from here the feed scrolls for as long as there are shops -->
       <div class="feed" id="feed"></div>
       <div class="credit" id="credit"></div>
@@ -534,6 +554,7 @@
           <span class="free" data-t="collect.free">No delivery fee</span></button>
       </div>
       <div id="p-branch"></div>
+      <div id="p-hot"></div>
       <div class="eyebrow">Before you pay</div>
       <h1 style="margin-bottom:6px">Your basket</h1>
       <p class="sub" id="p-shops" style="color:var(--green);font-weight:600"></p>
@@ -849,7 +870,7 @@
   function changed(){
     [['drawShop',drawShop],['drawPay',drawPay],['cDraw',cDraw],
      ['drawHomeBasket',drawHomeBasket],['drawPip',drawPip],['drawBar',drawBar],
-     ['drawCollections',drawCollections]].forEach(function(p){
+     ['drawCollections',drawCollections],['drawHotWarning',drawHotWarning]].forEach(function(p){
       try { p[1](); } catch(e){ console.error('render failed in ' + p[0] + ': ' + e.message); }
     });
   }
@@ -1040,6 +1061,28 @@
       '</div><div class="tx"><b>' + s.name + '</b><small>' + s.cuisine + ' &#183; ' + s.hub + '</small>' +
       '<i>' + s.est + ' &#183; ' + P(s.fee) + ' delivery &#183; minimum ' + P(s.min) + '</i></div></div>';
   }
+  function drawTowns(){
+    var box = $('towns');
+    if (!box) return;
+    box.innerHTML = '<span class="n">' + BRANCH_TOWNS.length + '</span>' +
+      '<b>' + T('town.title') + '</b>' +
+      '<p>' + T('town.body', {t: BRANCH_TOWNS.length}) + '</p>' +
+      '<span class="go">' + T('town.cta', {t: BRANCH_TOWNS.length}) +
+      ' <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#0F5A2E;fill:none;stroke-width:2.6;stroke-linecap:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>';
+  }
+  /* Opening it from home PRE SETS the collection, so a customer who starts from
+     "I am in Maun this week" has it configured before adding anything. */
+  $('towns').onclick = function(){
+    fulfil.mode = 'collect';
+    Array.prototype.forEach.call($('p-how').children, function(x){
+      x.className = (x.getAttribute('data-mode') === 'collect') ? 'on' : '';
+    });
+    $('bsheet').className = 'sheet on';
+    $('bq').value = '';
+    drawBranchList();
+    changed();
+  };
+
   function drawFeed(){
     var html = '';
     SECTIONS.forEach(function(sec){
@@ -1060,6 +1103,7 @@
     }
     $('feed').innerHTML = html;
     var noLogo = FEED_SHOPS.filter(function(x){ return x.logoStatus !== 'approved-local'; }).length;
+    drawTowns();
     $('credit').innerHTML = 'Concept prototype. Company logos are shown only where an approved asset exists; '
       + noLogo + ' of ' + FEED_SHOPS.length + ' merchants are shown as a name until they supply one. '
       + 'Menu items and prices come from each merchant&#8217;s own published page where one exists, and are blank otherwise. '
@@ -1355,6 +1399,37 @@
     return {ok: false, why: 'unknown'};
   }
 
+  /* ---------------------------------------------------------------------
+     A10.  Several shops, one counter, one code. The rider's job does not change:
+     they still call at every merchant. What changes is the last leg, and with it
+     the freshness problem, which gets WORSE. A delivered bag is timed; a bag on
+     a counter waits for a person who has not said when they are coming.
+     A shop's own category tells us whether it is hot. Nothing is guessed.
+     --------------------------------------------------------------------- */
+  function hotShops(){
+    /* openFeedShop builds these with `category`; the feed rows use `cat`. Accept both
+       rather than silently finding nothing, which is what happened first. */
+    return basket.shops().filter(function(sh){
+      return (sh.cat || sh.category) === 'Restaurants';
+    });
+  }
+  function drawHotWarning(){
+    var box = $('p-hot');
+    var hot = isCollect() ? hotShops() : [];
+    if (!hot.length){ box.innerHTML = ''; return; }
+    var names = hot.map(function(x){ return x.name; });
+    var list = names.length === 1 ? names[0]
+             : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+    box.innerHTML = '<div class="hotwarn"><b>' + T('hot.title') + '</b><p>' +
+      T('hot.body', {shops: list, branch: (fulfil.branch ? fulfil.branch.name : 'the branch')}) +
+      '</p><button data-hotswitch="1">' + T('hot.switch') + '</button></div>';
+  }
+  $('p-hot').onclick = function(e){
+    if (!e.target.closest('[data-hotswitch]')) return;
+    var d = document.querySelector('#p-how [data-mode="deliver"]');
+    if (d) d.click();
+  };
+
   /* a six character code the customer shows at the counter */
   function collectionCode(){
     var seed = (basket.ref || 'SC-4417') + (fulfil.branch ? fulfil.branch.id : '');
@@ -1611,8 +1686,10 @@
     $('p-empty').hidden = !empty;
     $('p-form').hidden = empty;
     var shopsNow = basket.shops();
-    $('p-shops').textContent = shopsNow.length === 0 ? '' :
-      shopsNow.length === 1 ? '1 shop, one delivery' : shopsNow.length + ' shops, one delivery';
+    $('p-shops').textContent = shopsNow.length === 0 ? ''
+      : isCollect()
+        ? (shopsNow.length === 1 ? T('collect.shops.one') : T('collect.shops.many', {n: shopsNow.length}))
+        : (shopsNow.length === 1 ? T('basket.shops.one') : T('basket.shops.many', {n: shopsNow.length}));
     $('p-groups').innerHTML = shopsNow.map(function(sh){
       var rows = basket.rows(sh.id);
       return '<div class="note plain" style="padding:12px 14px">' +
@@ -1634,7 +1711,9 @@
       (shopsNow.length > 1
         ? '<div><span style="text-decoration:line-through;color:var(--faint)">' + shopsNow.length + ' separate deliveries</span>' +
             '<b style="text-decoration:line-through;color:var(--faint);font-weight:500">' + P(sep) + '</b></div>' +
-          '<div><span style="color:var(--green);font-weight:700">One Sprint Me delivery</span><b style="color:var(--green)">' + P(one) + '</b></div>' +
+          '<div><span style="color:var(--green);font-weight:700">' +
+            (isCollect() ? T('collect.free') : T('basket.onefee')) +
+            '</span><b style="color:var(--green)">' + (isCollect() ? '' : P(one)) + '</b></div>' +
           (saving() > 0 ? '<div><span style="color:var(--green);font-weight:700">You save</span><b style="color:var(--green)">' + P(saving()) + '</b></div>' : '')
         : '<div><span>' + T('basket.delivery') + '</span><b>' +
             (isCollect() ? T('collect.free') : P(one)) + '</b></div>') +
