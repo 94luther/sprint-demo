@@ -58,6 +58,58 @@
   .tab i{opacity:1}
   #s-browse h1{margin:6px 0 2px}
 
+  /* ---- language toggle ---- */
+  .lang{flex:none;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:12px;
+        padding:6px 10px;font-size:11.5px;font-weight:800;color:#0E1211;cursor:pointer;
+        letter-spacing:.02em}
+  .lang:active{background:#F2F3F2}
+  /* ---- how would you like it: deliver or collect ---- */
+  .how{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:4px 0 6px}
+  .how button{text-align:left;background:#fff;border:1.5px solid var(--hair);border-radius:16px;
+              padding:12px 13px;cursor:pointer;font:inherit;color:var(--ink)}
+  .how button.on{border-color:#1B7A3E;background:#F1F8F3}
+  .how button b{display:block;font-size:13.5px;font-weight:700;line-height:1.25}
+  .how button small{display:block;font-size:11.5px;color:var(--sub);margin-top:3px;line-height:1.4}
+  .how button .free{display:inline-block;margin-top:6px;background:#1B7A3E;color:#fff;
+                    border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:800}
+  /* ---- branch picker ---- */
+  .branchbar{display:flex;align-items:center;gap:10px;background:#F1F8F3;border:1px solid rgba(27,122,62,.18);
+             border-radius:14px;padding:11px 13px;margin:2px 0 8px}
+  .branchbar .t{flex:1;min-width:0}
+  .branchbar .t b{display:block;font-size:13.5px;font-weight:700}
+  .branchbar .t small{display:block;font-size:11.5px;color:var(--sub);margin-top:2px;line-height:1.4}
+  .branchbar button{flex:none;border:0;background:#05462E;color:#fff;border-radius:999px;
+                    padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}
+  .sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.42);display:none}
+  .sheet.on{display:block}
+  .sheet .box{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:min(600px,100%);
+              max-height:86%;background:var(--white,#fff);border-radius:22px 22px 0 0;
+              display:flex;flex-direction:column;overflow:hidden}
+  .sheet .hdr{padding:16px 18px 10px;border-bottom:1px solid var(--hair)}
+  .sheet .hdr b{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .sheet .hdr small{display:block;color:var(--sub);font-size:12px;margin-top:3px}
+  .sheet .q{display:flex;align-items:center;gap:8px;background:#F2F3F2;border-radius:13px;
+            height:42px;padding:0 12px;margin:11px 0 0}
+  .sheet .q input{flex:1;border:0;background:transparent;outline:none;font:inherit;font-size:13.5px}
+  .sheet .list{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .sheet .b{display:flex;gap:11px;align-items:flex-start;padding:12px 18px;
+            border-bottom:1px solid var(--hair);cursor:pointer}
+  .sheet .b .pin{flex:none;width:30px;height:30px;border-radius:9px;background:#F1F8F3;
+                 display:flex;align-items:center;justify-content:center}
+  .sheet .b .pin svg{width:15px;height:15px;stroke:#1B7A3E;fill:none;stroke-width:2}
+  .sheet .b b{display:block;font-size:13.5px}
+  .sheet .b small{display:block;color:var(--sub);font-size:11.5px;margin-top:2px;line-height:1.4}
+  .sheet .b .town{flex:none;font-size:11px;font-weight:700;color:var(--sub)}
+  .sheet .close{padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--hair)}
+  .sheet .close button{width:100%;border:1px solid var(--hair);background:#fff;border-radius:14px;
+                       padding:12px;font:inherit;font-weight:700;cursor:pointer}
+  .sheet .none{padding:20px 18px;color:var(--sub);font-size:13px}
+  /* ---- the collection code on the order screen ---- */
+  .ccode{background:#F1F8F3;border:1px solid rgba(27,122,62,.2);border-radius:16px;
+         padding:15px 16px;margin:14px 0}
+  .ccode small{display:block;font-size:11.5px;color:var(--sub)}
+  .ccode b{display:block;font-size:31px;font-weight:800;letter-spacing:5px;color:#05462E;margin:5px 0 4px}
+
   /* ---- brand furniture: a logo is CONTAINED, a photograph is COVERED ---- */
   .appbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;background:#fff}
   .appbar .mark{height:30px;width:auto;max-width:190px;object-fit:contain;display:block}
@@ -374,16 +426,17 @@
         <div class="appbar">
           <div class="wm">
             <img class="mark" src="brands/sprint/logo-mark.png" alt="Sprint Couriers">
-            <small>Sprint Me &#183; several shops, one delivery</small>
+            <small data-t="app.tagline">Sprint Me &#183; several shops, one delivery</small>
           </div>
+          <button class="lang" id="lang">SETSWANA</button>
           <div class="addrpill">
             <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
-            <span><i>Deliver to</i><b>Block 9, Gaborone</b></span>
+            <span><i data-t="deliver.to">Deliver to</i><b>Block 9, Gaborone</b></span>
           </div>
         </div>
         <label class="srch">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
-          <input id="q" type="search" placeholder="Search shops, food, groceries and more"
+          <input id="q" type="search" placeholder="Search shops, food, groceries and more" data-tph="search.placeholder"
                  autocomplete="off" enterkeyhint="search">
         </label>
         <div id="qres" hidden></div>
@@ -450,6 +503,18 @@
         <button class="act" data-go-browse="1">Find a shop</button>
       </div>
       <div id="p-form">
+      <!-- BRANCH COLLECT. Sprint has 57 counters in 45 towns and no competitor in
+           Gaborone has a single one. Collecting is free to the customer and costs
+           Sprint no rider, so it is the only option here that earns money on order one. -->
+      <div class="eyebrow" data-t="how.title">How would you like it?</div>
+      <div class="how" id="p-how">
+        <button data-mode="deliver" class="on"><b data-t="how.deliver">Bring it to me</b>
+          <small data-t="how.deliver.sub">One rider, every shop, to your door</small></button>
+        <button data-mode="collect"><b data-t="how.collect">I will collect it</b>
+          <small data-t="how.collect.sub">Free. Pick it up at a Sprint branch</small>
+          <span class="free" data-t="collect.free">No delivery fee</span></button>
+      </div>
+      <div id="p-branch"></div>
       <div class="eyebrow">Before you pay</div>
       <h1 style="margin-bottom:6px">Your basket</h1>
       <p class="sub" id="p-shops" style="color:var(--green);font-weight:600"></p>
@@ -608,18 +673,34 @@
     </section>
 
   </div>
+  <div class="sheet" id="bsheet">
+    <div class="box">
+      <div class="hdr">
+        <b data-t="collect.pick">Choose a Sprint branch</b>
+        <small id="bcount"></small>
+        <div class="q">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#8d918f;fill:none;stroke-width:2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
+          <input id="bq" type="search" autocomplete="off" placeholder="Search a town or a branch" data-tph="collect.searchtown">
+        </div>
+      </div>
+      <div class="list" id="blist"></div>
+      <div class="close"><button data-bclose="1">Close</button></div>
+    </div>
+  </div>
   <div class="hbar" id="hbar"></div>
   <div class="tabs" id="tabs">
-    <button class="tab on" data-s="home"><i><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i>Home</button>
-    <button class="tab" data-s="browse"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></i>Browse</button>
-    <button class="tab" data-s="pay"><i><svg viewBox="0 0 24 24"><path d="M3 9h18l-2 10H5z"/><path d="M8 9l2-5M16 9l-2-5"/></svg></i>Basket<span class="pip" id="pip" hidden></span></button>
-    <button class="tab" data-s="track"><i><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></i>Orders</button>
+    <button class="tab on" data-s="home"><i><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></i><span data-t="nav.home">Home</span></button>
+    <button class="tab" data-s="browse"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></i><span data-t="nav.browse">Browse</span></button>
+    <button class="tab" data-s="pay"><i><svg viewBox="0 0 24 24"><path d="M3 9h18l-2 10H5z"/><path d="M8 9l2-5M16 9l-2-5"/></svg></i><span data-t="nav.basket">Basket</span><span class="pip" id="pip" hidden></span></button>
+    <button class="tab" data-s="track"><i><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></i><span data-t="nav.orders">Orders</span></button>
   </div>
  </div>
 </div>
 
-<script src="brands.gen.js"></script>
-<script src="feed.gen.js"></script>
+<script src="strings.gen.js" charset="utf-8"></script>
+<script src="branches.gen.js" charset="utf-8"></script>
+<script src="brands.gen.js" charset="utf-8"></script>
+<script src="feed.gen.js" charset="utf-8"></script>
 <script src="vendor/motion.js"></script>
 <script src="engine.bundle.js"></script>
 <script>
@@ -712,6 +793,9 @@
      whole commercial move: charge twice and the customer does the sum and goes
      back to ordering once. Sprint charges the highest single shop fee, once. */
   function deliveryFee(){
+    /* Collecting costs nothing, because no rider moves. This is the one line that
+       makes branch collect real rather than a label. */
+    if (typeof fulfil !== 'undefined' && fulfil.mode === 'collect') return 0;
     var shops = basket.shops();
     if(!shops.length) return 0;
     return Math.max.apply(null, shops.map(function(s){ return s.fee; }));
@@ -1078,6 +1162,108 @@
   document.addEventListener('click', function(e){
     if (e.target.closest('[data-go-browse]')) show('browse');
   });
+  /* =======================================================================
+     LANGUAGE. Every visible string comes from strings.gen.js through T().
+     Setswana is copyable by any competitor, so shipping it first is the value.
+     Ten draft lines still need a first-language speaker; lint-strings.py names them.
+     ======================================================================= */
+  var LANG = 'en';
+  try { LANG = localStorage.getItem('sm.lang') || 'en'; } catch (e) {}
+  function T(key, vars){
+    var tbl = (STRINGS[LANG] || STRINGS.en), t = tbl[key];
+    if (t === undefined) t = STRINGS.en[key];        /* never blank, always fall back */
+    if (t === undefined) return key;
+    if (vars) for (var k in vars) t = t.split('{' + k + '}').join(vars[k]);
+    return t;
+  }
+  function paintLanguage(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function(el){
+      el.textContent = T(el.getAttribute('data-t'));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tph]'), function(el){
+      el.placeholder = T(el.getAttribute('data-tph'));
+    });
+    $('lang').textContent = T('lang.switch').toUpperCase();
+    document.documentElement.lang = (LANG === 'tn') ? 'tn' : 'en';
+  }
+  $('lang').onclick = function(){
+    LANG = (LANG === 'en') ? 'tn' : 'en';
+    try { localStorage.setItem('sm.lang', LANG); } catch (e) {}
+    paintLanguage(); drawFeed(); changed();
+  };
+
+  /* =======================================================================
+     BRANCH COLLECT.  57 counters, 45 towns, already staffed. Collecting is
+     free to the customer, costs Sprint no rider, and solves the hardest
+     problem in Botswana delivery, which is that a plot number does not find
+     a house. No competitor in Gaborone has premises to offer.
+     ======================================================================= */
+  var fulfil = { mode: 'deliver', branch: null };
+  function isCollect(){ return fulfil.mode === 'collect'; }   /* not `collecting`: a legacy `var collecting = false` below would overwrite it */
+  function branchById(id){
+    for (var i = 0; i < BRANCHES.length; i++) if (BRANCHES[i].id === id) return BRANCHES[i];
+    return null;
+  }
+  function drawBranchBar(){
+    var box = $('p-branch');
+    if (!isCollect()){ box.innerHTML = ''; return; }
+    var b = fulfil.branch;
+    box.innerHTML = '<div class="branchbar"><div class="t">' +
+      (b ? '<b>' + T('collect.at', {b: b.name}) + '</b><small>' + (b.address || b.town) + '</small>'
+         : '<b>' + T('collect.pick') + '</b><small>' +
+           T('collect.points', {n: BRANCHES.length, t: BRANCH_TOWNS.length}) + '</small>') +
+      '</div><button data-bopen="1">' + (b ? T('collect.change') : T('collect.pick')) + '</button></div>';
+  }
+  function drawBranchList(){
+    var q = ($('bq').value || '').toLowerCase().trim();
+    var list = BRANCHES.filter(function(b){
+      if (!q) return true;
+      return (b.name + ' ' + b.town + ' ' + (b.address || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    /* Gaborone first when nothing is typed, because most people are there, but the
+       other 44 towns are the point of this feature and must stay visible. */
+    list.sort(function(a, c){
+      if (a.town === c.town) return a.name < c.name ? -1 : 1;
+      if (a.town === 'Gaborone') return -1;
+      if (c.town === 'Gaborone') return 1;
+      return a.town < c.town ? -1 : 1;
+    });
+    $('bcount').textContent = T('collect.points', {n: BRANCHES.length, t: BRANCH_TOWNS.length});
+    $('blist').innerHTML = list.length ? list.map(function(b){
+      return '<div class="b" data-bpick="' + b.id + '">' +
+        '<span class="pin"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span>' +
+        '<div style="flex:1;min-width:0"><b>' + b.name + '</b><small>' + (b.address || '') + '</small></div>' +
+        '<span class="town">' + b.town + '</span></div>';
+    }).join('') : '<div class="none">' + T('collect.nobranch') + '</div>';
+  }
+  $('p-how').onclick = function(e){
+    var btn = e.target.closest('[data-mode]'); if (!btn) return;
+    fulfil.mode = btn.getAttribute('data-mode');
+    Array.prototype.forEach.call($('p-how').children, function(x){
+      x.className = (x.getAttribute('data-mode') === fulfil.mode) ? 'on' : '';
+    });
+    if (isCollect() && !fulfil.branch){ $('bsheet').className = 'sheet on'; drawBranchList(); }
+    changed();
+  };
+  $('p-branch').onclick = function(e){
+    if (e.target.closest('[data-bopen]')){ $('bsheet').className = 'sheet on'; drawBranchList(); }
+  };
+  $('bq').addEventListener('input', drawBranchList);
+  $('bsheet').onclick = function(e){
+    if (e.target.closest('[data-bclose]') || e.target === $('bsheet')){
+      $('bsheet').className = 'sheet'; changed(); return;
+    }
+    var row = e.target.closest('[data-bpick]'); if (!row) return;
+    fulfil.branch = branchById(row.getAttribute('data-bpick'));
+    $('bsheet').className = 'sheet';
+    changed();
+  };
+  /* a six character code the customer shows at the counter */
+  function collectionCode(){
+    var seed = (basket.ref || 'SC-4417') + (fulfil.branch ? fulfil.branch.id : '');
+    var n = 0; for (var i = 0; i < seed.length; i++) n = (n * 31 + seed.charCodeAt(i)) % 1000000;
+    return ('00000' + n).slice(-6);
+  }
   /* the counter and ops screens are staff tools: only on the tab bar with ?ops=1 */
   if (/[?&]ops=1/.test(location.search)){
     $('tabs').insertAdjacentHTML('beforeend',
@@ -1322,6 +1508,8 @@
 
     /* the basket, grouped by shop: the picture on the home screen promises
        "different shops, one delivery", and this is where that promise is shown */
+    drawBranchBar();
+    $('p-addr').parentNode.style.display = isCollect() ? 'none' : '';
     var empty = basket.count() === 0;
     $('p-empty').hidden = !empty;
     $('p-form').hidden = empty;
@@ -1351,7 +1539,8 @@
             '<b style="text-decoration:line-through;color:var(--faint);font-weight:500">' + P(sep) + '</b></div>' +
           '<div><span style="color:var(--green);font-weight:700">One Sprint Me delivery</span><b style="color:var(--green)">' + P(one) + '</b></div>' +
           (saving() > 0 ? '<div><span style="color:var(--green);font-weight:700">You save</span><b style="color:var(--green)">' + P(saving()) + '</b></div>' : '')
-        : '<div><span>Delivery</span><b>' + P(one) + '</b></div>') +
+        : '<div><span>' + T('basket.delivery') + '</span><b>' +
+            (isCollect() ? T('collect.free') : P(one)) + '</b></div>') +
       '<div style="font-size:15px;color:#111"><b>' + (basket.unpriced() ? 'Total so far' : 'Total') +
         '</b><b>' + P(total()) + '</b></div>';
 
@@ -1367,13 +1556,16 @@
       if (!anyUnpriced && shortShop === null && basket.goodsIn(sh.id) < sh.min) shortShop = sh;
     });
     var unpriced = basket.unpriced();
-    var ready = basket.count() > 0 && pay.addr && pay.rail !== null && cashOk
+    /* collecting needs a branch chosen, not an address confirmed */
+    var placeOk = isCollect() ? !!fulfil.branch : pay.addr;
+    var ready = basket.count() > 0 && placeOk && pay.rail !== null && cashOk
                 && shortShop === null && unpriced === 0;
     $('p-why').textContent = basket.count() === 0 ? 'Your basket is empty'
       : unpriced ? (unpriced === 1 ? 'One item still needs a price from the shop'
                                    : unpriced + ' items still need a price from the shop')
       : shortShop ? 'Add ' + P(shortShop.min - basket.goodsIn(shortShop.id)) + ' more from ' + shortShop.name
-      : !pay.addr ? 'Confirm the address first'
+      : (isCollect() && !fulfil.branch) ? T('pay.pickbranch')
+      : (!isCollect() && !pay.addr) ? T('pay.needaddress')
       : !pay.rail ? 'Choose how you pay'
       : !cashOk ? 'Pick an amount the rider can change'
       : 'Place the order';
